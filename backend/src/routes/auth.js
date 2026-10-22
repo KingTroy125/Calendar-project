@@ -13,6 +13,9 @@ const router = Router();
 const creds = z.object({ email: z.string().email(), password: z.string().min(8) });
 
 // Signup route
+// This route handles user signup by validating the provided email and password against the defined schema.
+// It checks if the email is already in use and, if not, creates a new user in the database with a hashed password.
+// Upon successful signup, it issues a session token and responds with the user's ID and email.
 router.post("/signup", async (req, res) => {
   const parsed = creds.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid email or password" });
@@ -59,6 +62,9 @@ router.get("/me", requireAuth, async (req, res) => {
   res.json(user);
 });
 
+// Logout route
+// This route handles user logout by clearing the session token cookie from the client's browser. 
+// It responds with a 204 status code, indicating that the request was successful and there is no content to return.
 router.post("/logout", (_req, res) => {
   res.clearCookie("token");
   res.sendStatus(204);
