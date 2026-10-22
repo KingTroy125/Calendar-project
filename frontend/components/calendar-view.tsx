@@ -2,12 +2,17 @@
 
 import { useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date'
-import { Dialog, DialogTrigger, Modal, ModalOverlay, Popover } from 'react-aria-components'
+import { Button as AriaButton, Dialog, DialogTrigger, Modal, ModalOverlay, Popover } from 'react-aria-components'
 import {
   Plus,
   ArrowLeft,
   ArrowRight,
   X,
+  AlignLeft,
+  Clock,
+  Globe,
+  Tag,
+  type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
 import { Checkbox } from '@/components/base/checkbox/checkbox'
@@ -25,6 +30,14 @@ const EVENT_STYLES: Record<CalendarEventColor, string> = {
   pink: 'bg-status-rose-background text-status-rose-text',
   purple: 'bg-chart-1/15 text-chart-1',
   amber: 'bg-chart-2/15 text-chart-2',
+}
+
+const EVENT_DOT_STYLES: Record<CalendarEventColor, string> = {
+  blue: 'bg-accent-600',
+  green: 'bg-status-lime-text',
+  pink: 'bg-status-rose-text',
+  purple: 'bg-chart-1',
+  amber: 'bg-chart-2',
 }
 
 function dateKey(date: CalendarDate) {
@@ -49,10 +62,68 @@ function formatDate(date: CalendarDate, options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat('en-US', options).format(date.toDate(getLocalTimeZone()))
 }
 
-function formatTime(time: string) {
-  const [hour = 0, minute = 0] = time.split(':').map(Number)
-  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
-    .format(new Date(2020, 0, 1, hour, minute))
+const COLOR_LABELS: Record<CalendarEventColor, string> = {
+  blue: 'Blue',
+  green: 'Green',
+  pink: 'Pink',
+  purple: 'Purple',
+  amber: 'Amber',
+}
+
+function shortDateLabel(dateStr: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date(`${dateStr}T12:00:00`))
+}
+
+function eventDuration(event: CalendarEvent) {
+  if (event.allDay || !event.startTime || !event.endTime) return null
+  const [startHour = 0, startMinute = 0] = event.startTime.split(':').map(Number)
+  const [endHour = 0, endMinute = 0] = event.endTime.split(':').map(Number)
+  const total = endHour * 60 + endMinute - (startHour * 60 + startMinute)
+  if (total <= 0) return null
+  if (total < 60) return `${total}m`
+  const hours = Math.floor(total / 60)
+  const rest = total % 60
+  return rest ? `${hours}h ${rest}m` : `${hours}h`
+}
+
+function localTimezoneLabel(dateStr: string) {
+  const date = new Date(`${dateStr}T12:00:00`)
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const city = timeZone.split('/').pop()?.replace(/_/g, ' ') ?? timeZone
+  const offset =
+    new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' })
+      .formatToParts(date)
+      .find((part) => part.type === 'timeZoneName')?.value ?? ''
+  return [offset, city].filter(Boolean).join(' ')
+}
+
+function DetailRow({
+  icon: Icon,
+  align = 'center',
+  trailing,
+  children,
+}: {
+  icon: LucideIcon
+  align?: 'center' | 'start'
+  trailing?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={cx(
+        'flex gap-2.5 rounded-2xl bg-background-secondary-default px-3 py-2.5',
+        align === 'start' ? 'items-start' : 'items-center',
+      )}
+    >
+      <Icon className="size-4 shrink-0 text-foreground-icon-secondary" aria-hidden />
+      <div className="min-w-0 flex-1 text-body-regular text-text-primary">{children}</div>
+      {trailing ? <div className="shrink-0">{trailing}</div> : null}
+    </div>
+  )
 }
 
 function EventDetailsTrigger({
@@ -66,37 +137,64 @@ function EventDetailsTrigger({
   style?: CSSProperties
   children: ReactNode
 }) {
-  const eventDate = new Date(`${event.date}T12:00:00`)
-  const dateLabel = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(eventDate)
+  const duration = eventDuration(event)
 
   return (
     <DialogTrigger>
-      <button type="button" style={style} className={className}>
+      <AriaButton style={style} className={className}>
         {children}
-      </button>
+      </AriaButton>
       <Popover
         placement="right top"
-        className="z-50 w-[min(300px,calc(100vw-32px))] rounded-2xl border border-border-button-default bg-background-primary-default p-4 shadow-xl outline-none"
+        className="z-50 w-[min(340px,calc(100vw-32px))] rounded-3xl border border-border-button-default bg-background-primary-default p-2.5 shadow-xl outline-none"
       >
-        <Dialog aria-label={`Event details: ${event.title}`} className="flex flex-col gap-3 outline-none">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="text-headline-medium text-text-primary">{event.title}</h3>
-            <span className={cx('shrink-0 rounded-full px-2 py-1 text-caption-2-medium', EVENT_STYLES[event.color])}>
-              {event.allDay ? 'All day' : 'Event'}
-            </span>
+        <Dialog aria-label={`Event details: ${event.title}`} className="flex flex-col gap-2 outline-none">
+          <div className="rounded-2xl bg-background-secondary-default px-3.5 py-3">
+            <div className="flex items-center gap-2">
+              <span className={cx('size-2 shrink-0 rounded-full', EVENT_DOT_STYLES[event.color])} aria-hidden />
+              <span className={cx('rounded-full px-2 py-0.5 text-caption-2-medium', EVENT_STYLES[event.color])}>
+                {COLOR_LABELS[event.color]}
+              </span>
+            </div>
+            <h3 className="mt-2 truncate text-title-3-semibold text-text-primary">{event.title}</h3>
+            <p className="mt-0.5 text-body-regular text-text-secondary">{shortDateLabel(event.date)}</p>
           </div>
-          <p className="text-body-regular text-text-secondary">{dateLabel}</p>
-          {!event.allDay && event.startTime && event.endTime && (
-            <p className="text-body-medium text-text-primary">
-              {formatTime(event.startTime)} - {formatTime(event.endTime)}
-            </p>
+
+          <DetailRow
+            icon={Clock}
+            trailing={
+              duration ? (
+                <span className="rounded-lg bg-background-tertiary-default px-2 py-1 text-caption-1-medium tabular-nums text-text-secondary">
+                  {duration}
+                </span>
+              ) : undefined
+            }
+          >
+            {!event.allDay && event.startTime && event.endTime ? (
+              <span className="flex items-center gap-2 tabular-nums">
+                <span>{event.startTime}</span>
+                <ArrowRight className="size-3.5 shrink-0 text-foreground-icon-tertiary" aria-hidden />
+                <span>{event.endTime}</span>
+              </span>
+            ) : (
+              'All day'
+            )}
+          </DetailRow>
+
+          <DetailRow icon={Globe}>{localTimezoneLabel(event.date)}</DetailRow>
+
+          <DetailRow
+            icon={Tag}
+            trailing={<span className={cx('block size-3 rounded-full', EVENT_DOT_STYLES[event.color])} aria-hidden />}
+          >
+            {COLOR_LABELS[event.color]}
+          </DetailRow>
+
+          {event.description && (
+            <DetailRow icon={AlignLeft} align="start">
+              <p className="whitespace-pre-wrap text-body-regular text-text-secondary">{event.description}</p>
+            </DetailRow>
           )}
-          {event.description && <p className="whitespace-pre-wrap text-body-regular text-text-secondary">{event.description}</p>}
         </Dialog>
       </Popover>
     </DialogTrigger>
