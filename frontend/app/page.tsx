@@ -1,9 +1,5 @@
-import Login from '@/app/login/page';
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <main>
-        <Login />
-    </main>
-  );
+  redirect('/dashboard');
 }
