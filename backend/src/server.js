@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import auth from "./routes/auth.js";
+import events from "./routes/events.js";
 import { prisma } from "./lib/prisma.js";
 
 // This file sets up an Express server for the backend of a calendar application. 
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 	next();
 });
 app.use("/auth", auth);
+app.use("/events", events);
 
 const port = Number(process.env.PORT || 3001);
 
@@ -35,7 +37,8 @@ async function startServer() {
 		const server = app.listen(port, () => {
 			console.log(`\nCalendar API server started`);
 			console.log(`Listening at http://localhost:${port}`);
-			console.log(`Auth routes: /auth/signup, /auth/login, /auth/me, /auth/logout\n`);
+			console.log(`Auth routes: /auth/signup, /auth/login, /auth/me, /auth/logout`);
+			console.log(`Event routes: GET/POST /events\n`);
 		});
 
 		server.on("error", (error) => {
