@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date'
 import {
-  Plus,
   ArrowLeft,
   ArrowRight,
   Calendar,
@@ -14,7 +13,6 @@ import { Button } from '@/components/base/buttons/button'
 import { DatePicker } from '@/components/base/date-picker/date-picker'
 import { IconButton } from '@/components/base/buttons/icon-button'
 import { CalendarView } from '@/components/calendar-view'
-import { CreateEventModal } from '@/components/create-event-modal'
 import { EventDetailModal } from '@/components/event-detail-modal'
 import { BackendError, createCalendarEvent, getCalendarEvents, type CalendarEvent, type CurrentUser, type NewCalendarEvent } from '@/lib/api'
 import { cx } from '@/utils/cx'
@@ -49,7 +47,6 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const [eventsError, setEventsError] = useState('')
-  const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null)
   const { from: eventsFrom, to: eventsTo } = eventRange(selectedDate)
   const weekStart = startOfWeek(selectedDate)
@@ -115,14 +112,6 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
           eventsLoading={eventsLoading}
           eventsError={eventsError}
         />
-        <CreateEventModal
-          isOpen={createModalOpen}
-          onOpenChange={setCreateModalOpen}
-          initialDate={selectedDate}
-          onCreateEvent={async (event) => {
-            await handleCreateEvent(event)
-          }}
-        />
       </main>
     )
   }
@@ -142,16 +131,13 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
               Here&apos;s what&apos;s happening with your schedule.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <DatePicker
-              value={selectedDate}
-              onChange={(date) => {
-                if (date) setSelectedDate(date)
-              }}
-              aria-label="Choose a date"
-            />
-            <Button leadingIcon={Plus} onClick={() => setCreateModalOpen(true)}>New event</Button>
-          </div>
+          <DatePicker
+            value={selectedDate}
+            onChange={(date) => {
+              if (date) setSelectedDate(date)
+            }}
+            aria-label="Choose a date"
+          />
         </div>
       </section>
 
@@ -307,15 +293,6 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
         <h2 className="text-title-2-medium text-text-primary">Account</h2>
         <p className="mt-1 text-body-regular text-text-secondary">Signed in as {user.email}</p>
       </section>
-
-      <CreateEventModal
-        isOpen={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        initialDate={selectedDate}
-        onCreateEvent={async (event) => {
-          await handleCreateEvent(event)
-        }}
-      />
 
       <EventDetailModal
         event={detailEvent}
