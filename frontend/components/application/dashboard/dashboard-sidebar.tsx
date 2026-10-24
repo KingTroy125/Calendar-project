@@ -3,9 +3,6 @@
 import { useTemplateCopy } from "@/components/foundations/template-copy/template-copy";
 
 import {
-  useCallback,
-  useEffect,
-  useRef,
   useState,
   type ComponentType,
   type ReactNode,
@@ -20,11 +17,11 @@ import {
   PanelLeft,
   Smile,
 } from "lucide-react";
+import { CommandPalette } from "@/components/application/dashboard/command-palette";
 import { SettingsModal } from "@/components/application/settings/settings-modal";
 import { ThemeToggle } from "@/components/application/theme/theme-toggle";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badge";
-import { CloseButton } from "@/components/base/buttons/close-button";
 import { IconButton } from "@/components/base/buttons/icon-button";
 import { Kbd } from "@/components/base/kbd/kbd";
 import { cx } from "@/utils/cx";
@@ -161,24 +158,15 @@ export const DASHBOARD_NAV: DashboardNavItem[] = [
  */
 function NavRows({
   items,
-  query,
   selected,
   collapsed,
-  secondaryMatch,
 }: {
   items: DashboardNavItem[];
-  query: string;
   selected: string;
   collapsed: boolean;
-  /** Whether Support or Settings matches, so "No results" only shows when nothing does. */
-  secondaryMatch: boolean;
 }) {
   const localize = useTemplateCopy();
-  const shown = items.filter((item) => item.label.toLocaleLowerCase().includes(query));
-  if (shown.length === 0 && !secondaryMatch && !collapsed) {
-    return localize(<p className="px-2 py-3 text-body-regular text-text-tertiary">No results</p>);
-  }
-  return shown.map((item) => {
+  return items.map((item) => {
       const isSelected = selected === item.key;
       return (
         <NavItem
@@ -236,60 +224,8 @@ export function DashboardSidebar({
   const localize = useTemplateCopy();
   const [collapsedState, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [searchActive, setSearchActive] = useState(false);
-  const [query, setQuery] = useState("");
-  const searchTriggerRef = useRef<HTMLButtonElement>(null);
-  const searchFieldRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const collapsed = mobile ? false : collapsedState;
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const matches = (label: string) => label.toLocaleLowerCase().includes(normalizedQuery);
-  const secondaryLabels = ["Settings"];
-  const secondaryMatch = secondaryLabels.some(matches);
-
-  const activateSearch = useCallback(() => {
-    if (!mobile) setCollapsed(false);
-    setSearchActive(true);
-  }, [mobile]);
-
-  const deactivateSearch = useCallback((restoreFocus: boolean) => {
-    setQuery("");
-    setSearchActive(false);
-    if (restoreFocus) {
-      window.requestAnimationFrame(() => searchTriggerRef.current?.focus());
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!searchActive) return;
-    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [searchActive]);
-
-  useEffect(() => {
-    if (!searchActive) return;
-
-    const onOutsideClick = (event: MouseEvent) => {
-      const target = event.target;
-      if (target instanceof Node && searchFieldRef.current?.contains(target)) return;
-      deactivateSearch(false);
-    };
-
-    document.addEventListener("click", onOutsideClick);
-    return () => document.removeEventListener("click", onOutsideClick);
-  }, [deactivateSearch, searchActive]);
-
-  useEffect(() => {
-    const onShortcut = (event: KeyboardEvent) => {
-      if (event.key.toLocaleLowerCase() === "l" && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        activateSearch();
-      }
-    };
-
-    window.addEventListener("keydown", onShortcut);
-    return () => window.removeEventListener("keydown", onShortcut);
-  }, [activateSearch]);
 
   return localize((
     <aside
@@ -341,56 +277,14 @@ export function DashboardSidebar({
             </Collapsible>
           </div>
           {mobile && flat ? (
-            <div
-              ref={searchFieldRef}
-              className={cx(
-                "flex h-9 items-center overflow-hidden rounded-full bg-background-tertiary-default transition-[width,box-shadow] duration-300 ease-in-out",
-                searchActive
-                  ? "w-full gap-2 pe-2.5 ps-2 ring-2 ring-inset ring-border-button-active"
-                  : "w-9 gap-0 px-2",
-              )}
+            <button
+              type="button"
+              aria-label="Search"
+              onClick={() => setPaletteOpen(true)}
+              className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-background-tertiary-default text-foreground-icon-secondary transition-colors hover:bg-background-tertiary-hover"
             >
-              <button
-                ref={searchTriggerRef}
-                type="button"
-                aria-label="Search"
-                onClick={activateSearch}
-                className="flex size-5 shrink-0 cursor-pointer items-center justify-center text-foreground-icon-secondary"
-              >
-                <Search className="size-5" aria-hidden />
-              </button>
-              <input
-                ref={searchInputRef}
-                type="search"
-                aria-label="Filter template navigation"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    deactivateSearch(true);
-                  }
-                }}
-                placeholder="Search..."
-                tabIndex={searchActive ? 0 : -1}
-                className={cx(
-                  "min-w-0 bg-transparent text-body-medium tracking-[-0.015em] text-text-primary outline-none placeholder:text-text-tertiary",
-                  "transition-[width,opacity] duration-200 ease-in-out",
-                  searchActive
-                    ? "w-full flex-1 opacity-100 delay-100"
-                    : "pointer-events-none w-0 flex-none opacity-0 delay-0",
-                )}
-              />
-              <CloseButton
-                size="2xs"
-                aria-label="Clear navigation search"
-                onClick={() => deactivateSearch(true)}
-                className={cx(
-                  "shrink-0 bg-background-tertiary-hover transition-opacity duration-150",
-                  searchActive ? "opacity-100 delay-150" : "pointer-events-none opacity-0 delay-0",
-                )}
-              />
-            </div>
+              <Search className="size-5" aria-hidden />
+            </button>
           ) : mobile ? (
             <button
               type="button"
@@ -405,10 +299,7 @@ export function DashboardSidebar({
               type="button"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!collapsed}
-              onClick={() => {
-                if (!collapsedState) deactivateSearch(false);
-                setCollapsed(!collapsedState);
-              }}
+              onClick={() => setCollapsed(!collapsedState)}
               className={cx(
                 "cursor-pointer text-foreground-icon-secondary transition-transform duration-300 ease-in-out",
                 collapsed && "flex w-9 items-center justify-center",
@@ -424,41 +315,12 @@ export function DashboardSidebar({
 
         <div className="flex w-full flex-col gap-3">
           {/* Quick search */}
-          {!flat && (searchActive && !collapsed ? (
-            <div
-              ref={searchFieldRef}
-              className="flex w-full items-center gap-2 rounded-full bg-background-tertiary-default py-2 pe-2.5 ps-2 ring-2 ring-inset ring-border-button-active transition-[background-color,box-shadow] duration-[var(--input-transition-ms)] ease"
-            >
-                <Search className="size-5 shrink-0 text-foreground-icon-secondary" aria-hidden />
-              <input
-                ref={searchInputRef}
-                type="search"
-                aria-label="Filter template navigation"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    deactivateSearch(true);
-                  }
-                }}
-                placeholder="Search navigation…"
-                className="min-w-0 flex-1 bg-transparent text-body-medium text-text-primary outline-none placeholder:text-text-tertiary"
-              />
-              <CloseButton
-                size="2xs"
-                aria-label="Clear navigation search"
-                onClick={() => deactivateSearch(true)}
-                className="bg-background-tertiary-hover"
-              />
-            </div>
-          ) : (
+          {!flat && (
             <button
-              ref={searchTriggerRef}
               type="button"
               aria-label="Quick Search"
               title={collapsed ? "Quick Search" : undefined}
-              onClick={activateSearch}
+              onClick={() => setPaletteOpen(true)}
               className={cx(
                 "flex cursor-pointer items-center gap-2 p-2 hover:bg-background-tertiary-hover/55",
                 "transition-[width,border-radius,background-color] duration-300 ease-in-out",
@@ -468,7 +330,7 @@ export function DashboardSidebar({
               )}
             >
               <span className={cx("flex min-w-0 items-center gap-2", !collapsed && "flex-1")}>
-              <Search className="size-5 shrink-0 text-foreground-icon-secondary" aria-hidden />
+                <Search className="size-5 shrink-0 text-foreground-icon-secondary" aria-hidden />
                 <Collapsible collapsed={collapsed}>
                   <span className="text-body-medium whitespace-nowrap text-text-secondary">
                     Quick Search
@@ -476,23 +338,17 @@ export function DashboardSidebar({
                 </Collapsible>
               </span>
               <Collapsible collapsed={collapsed}>
-                <Kbd>⌘L</Kbd>
+                <Kbd>⌘K</Kbd>
               </Collapsible>
             </button>
-          ))}
+          )}
 
           {/* Primary nav. The 2px inset is for the expanded rail only: the
               collapsed column is exactly as wide as a 36px item, so padding
               here pushes every item 2px right and the rail's own clip shaves
               that much off its selected fill and hover state. */}
           <nav className={cx("flex w-full flex-col gap-1", !collapsed && "px-0.5")}>
-            <NavRows
-              items={items}
-              query={normalizedQuery}
-              selected={selected}
-              collapsed={collapsed}
-              secondaryMatch={secondaryMatch}
-            />
+            <NavRows items={items} selected={selected} collapsed={collapsed} />
           </nav>
         </div>
       </div>
@@ -509,14 +365,12 @@ export function DashboardSidebar({
           ))}
         {/* Secondary nav */}
         <nav className="flex w-full flex-col gap-1">
-          {matches("Settings") && (
-            <NavItem
-              icon={Settings2}
-              label="Settings"
-              collapsed={collapsed}
-              onClick={() => setSettingsOpen(true)}
-            />
-          )}
+          <NavItem
+            icon={Settings2}
+            label="Settings"
+            collapsed={collapsed}
+            onClick={() => setSettingsOpen(true)}
+          />
         </nav>
 
         <div className={cx("flex min-w-0 items-center gap-2 rounded-xl bg-background-tertiary-default p-2", collapsed && "justify-center bg-transparent p-0")}>
@@ -548,6 +402,15 @@ export function DashboardSidebar({
           )}
         </div>
       </div>
+
+      <CommandPalette
+        isOpen={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onNavigate={(section) => {
+          window.location.hash = section;
+        }}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       <SettingsModal
         isOpen={settingsOpen}
