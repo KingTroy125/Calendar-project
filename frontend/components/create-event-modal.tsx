@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { CalendarDate } from '@internationalized/date'
-import { Dialog, DialogTrigger, Modal, ModalOverlay } from 'react-aria-components'
+import { Dialog, Modal, ModalOverlay } from 'react-aria-components'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
 import { Checkbox } from '@/components/base/checkbox/checkbox'
@@ -48,12 +48,16 @@ export function CreateEventModal({
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  function resetAndClose() {
+  useEffect(() => {
+    if (!isOpen) return
     setDraftDate(initialDate)
     setAllDay(false)
     setColor('blue')
     setFormError('')
     setSaving(false)
+  }, [isOpen, initialDate])
+
+  function close() {
     onOpenChange(false)
   }
 
@@ -86,7 +90,7 @@ export function CreateEventModal({
         allDay,
         color,
       })
-      resetAndClose()
+      close()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Unable to save event. Please try again.')
     } finally {
@@ -95,84 +99,86 @@ export function CreateEventModal({
   }
 
   return (
-    <DialogTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalOverlay
-        isDismissable
-        className={({ isEntering, isExiting }) => cx(
-          'fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-text-primary/30 p-4 backdrop-blur-sm',
-          isEntering && 'animate-in fade-in duration-150',
-          isExiting && 'animate-out fade-out duration-100',
-        )}
-      >
-        <Modal className="w-full max-w-md outline-none">
-          <Dialog aria-label="Create event" className="rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-xl sm:p-6">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-title-3-semibold text-text-primary">New event</h3>
-                  <p className="mt-1 text-body-regular text-text-secondary">Fill in the details below.</p>
-                </div>
-                <IconButton
-                  icon={X}
-                  size="small"
-                  aria-label="Close event dialog"
-                  onClick={resetAndClose}
-                />
+    <ModalOverlay
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) close()
+      }}
+      isDismissable
+      className={({ isEntering, isExiting }) => cx(
+        'fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-text-primary/30 p-4 backdrop-blur-sm',
+        isEntering && 'animate-in fade-in duration-150',
+        isExiting && 'animate-out fade-out duration-100',
+      )}
+    >
+      <Modal className="w-full max-w-md outline-none">
+        <Dialog aria-label="Create event" className="rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-xl sm:p-6">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-title-3-semibold text-text-primary">New event</h3>
+                <p className="mt-1 text-body-regular text-text-secondary">Fill in the details below.</p>
               </div>
+              <IconButton
+                icon={X}
+                size="small"
+                aria-label="Close event dialog"
+                onClick={close}
+              />
+            </div>
 
-              <Input name="title" label="Event title" placeholder="Planning session" isRequired autoFocus />
+            <Input name="title" label="Event title" placeholder="Planning session" isRequired autoFocus />
 
-              <Textarea name="description" label="Description" placeholder="Add notes or details (optional)" rows={3} />
+            <Textarea name="description" label="Description" placeholder="Add notes or details (optional)" rows={3} />
 
-              <div className="flex flex-col gap-1.5">
-                <span className="text-caption-1-semibold text-text-primary">Date</span>
-                <DatePicker value={draftDate} onChange={(date) => date && setDraftDate(date)} aria-label="Event date" />
+            <div className="flex flex-col gap-1.5">
+              <span className="text-caption-1-semibold text-text-primary">Date</span>
+              <DatePicker value={draftDate} onChange={(date) => date && setDraftDate(date)} aria-label="Event date" />
+            </div>
+
+            <Checkbox isSelected={allDay} onChange={setAllDay}>All day</Checkbox>
+
+            {!allDay && (
+              <div className="grid grid-cols-2 gap-3">
+                <Input name="startTime" label="Starts" type="time" defaultValue="09:00" isRequired />
+                <Input name="endTime" label="Ends" type="time" defaultValue="10:00" isRequired />
               </div>
+            )}
 
-              <Checkbox isSelected={allDay} onChange={setAllDay}>All day</Checkbox>
-
-              {!allDay && (
-                <div className="grid grid-cols-2 gap-3">
-                  <Input name="startTime" label="Starts" type="time" defaultValue="09:00" isRequired />
-                  <Input name="endTime" label="Ends" type="time" defaultValue="10:00" isRequired />
-                </div>
-              )}
-
-              <fieldset className="flex flex-col gap-2">
-                <legend className="text-caption-1-semibold text-text-primary">Color</legend>
-                <div className="flex items-center gap-2">
-                  {EVENT_COLORS.map((eventColor) => (
-                    <button
-                      key={eventColor}
-                      type="button"
-                      aria-label={`${eventColor} event color`}
-                      aria-pressed={color === eventColor}
-                      onClick={() => setColor(eventColor)}
-                      className={cx(
-                        'flex size-7 items-center justify-center rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-border-focus-ring',
-                        COLOR_STYLES[eventColor],
-                        color === eventColor && 'ring-2 ring-border-focus-ring ring-offset-2',
-                      )}
-                    >
-                      <span className={cx('size-3 rounded-full', COLOR_DOT_STYLES[eventColor])} />
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-
-              {formError && <p role="alert" className="text-body-regular text-text-error-primary">{formError}</p>}
-
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={resetAndClose} disabled={saving}>Cancel</Button>
-                <Button type="submit" disabled={saving} leadingIcon={Plus}>
-                  {saving ? 'Saving...' : 'Save event'}
-                </Button>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="text-caption-1-semibold text-text-primary">Color</legend>
+              <div className="flex items-center gap-2">
+                {EVENT_COLORS.map((eventColor) => (
+                  <button
+                    key={eventColor}
+                    type="button"
+                    aria-label={`${eventColor} event color`}
+                    aria-pressed={color === eventColor}
+                    onClick={() => setColor(eventColor)}
+                    className={cx(
+                      'flex size-7 items-center justify-center rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-border-focus-ring',
+                      COLOR_STYLES[eventColor],
+                      color === eventColor && 'ring-2 ring-border-focus-ring ring-offset-2',
+                    )}
+                  >
+                    <span className={cx('size-3 rounded-full', COLOR_DOT_STYLES[eventColor])} />
+                  </button>
+                ))}
               </div>
-            </form>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-    </DialogTrigger>
+            </fieldset>
+
+            {formError && <p role="alert" className="text-body-regular text-text-error-primary">{formError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={close} disabled={saving}>Cancel</Button>
+              <Button type="submit" disabled={saving} leadingIcon={Plus}>
+                {saving ? 'Saving...' : 'Save event'}
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   )
 }
 
