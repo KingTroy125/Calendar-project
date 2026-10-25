@@ -13,8 +13,9 @@ import { Button } from '@/components/base/buttons/button'
 import { DatePicker } from '@/components/base/date-picker/date-picker'
 import { IconButton } from '@/components/base/buttons/icon-button'
 import { CalendarView } from '@/components/calendar-view'
+import { CreateEventModal } from '@/components/create-event-modal'
 import { EventDetailModal } from '@/components/event-detail-modal'
-import { BackendError, createCalendarEvent, getCalendarEvents, type CalendarEvent, type CurrentUser, type NewCalendarEvent } from '@/lib/api'
+import { BackendError, createCalendarEvent, getCalendarEvents, updateCalendarEvent, type CalendarEvent, type CurrentUser, type NewCalendarEvent } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
 function startOfWeek(date: CalendarDate) {
@@ -48,6 +49,7 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
   const [eventsLoading, setEventsLoading] = useState(true)
   const [eventsError, setEventsError] = useState('')
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null)
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const { from: eventsFrom, to: eventsTo } = eventRange(selectedDate)
   const weekStart = startOfWeek(selectedDate)
   const weekDays = Array.from({ length: 7 }, (_, index) => weekStart.add({ days: index }))
@@ -101,6 +103,18 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
     return savedEvent
   }
 
+  async function handleUpdateEvent(id: string, event: NewCalendarEvent) {
+    const savedEvent = await updateCalendarEvent(id, event)
+    setEvents((currentEvents) => currentEvents.map((item) => (item.id === id ? savedEvent : item)))
+    setDetailEvent((current) => (current?.id === id ? savedEvent : current))
+    return savedEvent
+  }
+
+  function openEditEvent(event: CalendarEvent) {
+    setDetailEvent(null)
+    setEditingEvent(event)
+  }
+
   if (calendarOnly) {
     return (
       <main className="mx-auto flex w-full max-w-[1440px] flex-col p-3 sm:p-4 lg:p-6">
@@ -109,6 +123,7 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
           onDateChange={setSelectedDate}
           events={events}
           onCreateEvent={handleCreateEvent}
+          onUpdateEvent={handleUpdateEvent}
           eventsLoading={eventsLoading}
           eventsError={eventsError}
         />
@@ -298,6 +313,19 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
         event={detailEvent}
         isOpen={detailEvent !== null}
         onClose={() => setDetailEvent(null)}
+        onEdit={openEditEvent}
+      />
+      <CreateEventModal
+        isOpen={editingEvent !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingEvent(null)
+        }}
+        initialDate={selectedDate}
+        event={editingEvent}
+        onSaveEvent={async (payload) => {
+          if (!editingEvent) return
+          await handleUpdateEvent(editingEvent.id, payload)
+        }}
       />
     </main>
   )
