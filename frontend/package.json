@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@internationalized/date": "^3.12.1",
+    "@internationalized/date": "^3.12.4",
     "@remixicon/react": "^4.9.0",
     "@tailwindcss/postcss": "^4.3.3",
     "class-variance-authority": "^0.7.1",
