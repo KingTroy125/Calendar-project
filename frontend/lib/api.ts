@@ -1,7 +1,5 @@
-// In production the frontend proxies /api to the backend (see next.config.ts),
-// which keeps the session cookie first-party. Local development points at the
-// API directly via NEXT_PUBLIC_API_URL.
-const API = process.env.NEXT_PUBLIC_API_URL || "/api";
+// In production the frontend proxies /api to the backend
+const API = "/api";
 
 export class BackendError extends Error {
   constructor(message: string, public status?: number) {
