@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx prisma generate",
+  "functions": {
+    "src/server.js": {
+      "maxDuration": 30,
+      "includeFiles": "node_modules/.prisma/**"
+    }
+  }
+}
