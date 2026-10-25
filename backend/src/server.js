@@ -6,14 +6,33 @@ import auth from "./routes/auth.js";
 import events from "./routes/events.js";
 import { prisma } from "./lib/prisma.js";
 
-// This file sets up an Express server for the backend of a calendar application. 
-// It imports necessary modules, configures middleware, and defines routes for user authentication. 
-// The server connects to a database using Prisma and listens for incoming requests on a specified port. 
-// It also includes logging for request details and handles errors during server startup and database connection.
+// This file builds the Express app for the calendar API. It is exported so
+// Vercel can run it as a single serverless Function; locally it also starts a
+// normal listener.
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
-app.use(express.json());
+
+// With credentials enabled, CORS must name an exact origin. In production the
+// frontend is expected to call the API through its own `/api` rewrite, so a
+// same-origin request has no Origin header and CORS is not involved.
+const allowedOrigin =
+	process.env.FRONTEND_URL ?? (process.env.NODE_ENV === "production" ? false : true);
+
+app.use(cors({ origin: allowedOrigin, credentials: true }));
+app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
+
+// A request can arrive with an extra `/api` prefix when it is proxied by the
+// frontend (or when the API is called directly at `/api/...`). Strip just that
+// first segment so the same route table works everywhere.
+app.use((req, _res, next) => {
+	if (req.url === "/api") {
+		req.url = "/";
+	} else if (req.url.startsWith("/api/")) {
+		req.url = req.url.slice(4);
+	}
+	next();
+});
+
 app.use((req, res, next) => {
 	const startedAt = Date.now();
 	res.on("finish", () => {
@@ -22,8 +41,23 @@ app.use((req, res, next) => {
 	});
 	next();
 });
+
+app.get("/health", (_req, res) => {
+	res.json({ ok: true });
+});
+
 app.use("/auth", auth);
 app.use("/events", events);
+
+app.use((_req, res) => {
+	res.status(404).json({ error: "Not found" });
+});
+
+// Keep unexpected failures as JSON instead of Express's default HTML stack.
+app.use((error, _req, res, _next) => {
+	console.error("Unhandled request error:", error);
+	res.status(500).json({ error: "Internal server error" });
+});
 
 const port = Number(process.env.PORT || 3001);
 
@@ -51,4 +85,10 @@ async function startServer() {
 	}
 }
 
-startServer();
+// Vercel imports this module and invokes the exported app; it must not open a
+// listener. Local development and `npm start` still get a normal server.
+if (!process.env.VERCEL) {
+	startServer();
+}
+
+export default app;

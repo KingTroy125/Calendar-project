@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 // lets you declare a schema and validate against it:
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { issueSession } from "../lib/session.js";
+import { issueSession, clearSession } from "../lib/session.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
@@ -66,7 +66,7 @@ router.get("/me", requireAuth, async (req, res) => {
 // This route handles user logout by clearing the session token cookie from the client's browser. 
 // It responds with a 204 status code, indicating that the request was successful and there is no content to return.
 router.post("/logout", (_req, res) => {
-  res.clearCookie("token");
+  clearSession(res);
   res.sendStatus(204);
 });
 
