@@ -1,25 +1,23 @@
 'use client'
 
-import { useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
-import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date'
-import { Button as AriaButton, Dialog, DialogTrigger, Modal, ModalOverlay, Popover } from 'react-aria-components'
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date'
+import { Button as AriaButton, Dialog, DialogTrigger, Popover } from 'react-aria-components'
 import {
   Plus,
   ArrowLeft,
   ArrowRight,
-  X,
   AlignLeft,
   Clock,
   Globe,
+  Pencil,
   Tag,
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
-import { Checkbox } from '@/components/base/checkbox/checkbox'
 import { DatePicker } from '@/components/base/date-picker/date-picker'
 import { IconButton } from '@/components/base/buttons/icon-button'
-import { Input } from '@/components/base/input/input'
-import { Textarea } from '@/components/base/textarea/textarea'
+import { CreateEventModal } from '@/components/create-event-modal'
 import type { CalendarEvent, CalendarEventColor, NewCalendarEvent } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
@@ -130,17 +128,20 @@ function EventDetailsTrigger({
   event,
   className,
   style,
+  onEdit,
   children,
 }: {
   event: CalendarEvent
   className: string
   style?: CSSProperties
+  onEdit: (event: CalendarEvent) => void
   children: ReactNode
 }) {
   const duration = eventDuration(event)
+  const [open, setOpen] = useState(false)
 
   return (
-    <DialogTrigger>
+    <DialogTrigger isOpen={open} onOpenChange={setOpen}>
       <AriaButton style={style} className={className}>
         {children}
       </AriaButton>
@@ -195,6 +196,19 @@ function EventDetailsTrigger({
               <p className="whitespace-pre-wrap text-body-regular text-text-secondary">{event.description}</p>
             </DetailRow>
           )}
+
+          <div className="flex justify-end pt-1">
+            <Button
+              size="small"
+              leadingIcon={Pencil}
+              onClick={() => {
+                setOpen(false)
+                onEdit(event)
+              }}
+            >
+              Edit event
+            </Button>
+          </div>
         </Dialog>
       </Popover>
     </DialogTrigger>
@@ -205,10 +219,12 @@ function MonthGrid({
   date,
   events,
   onSelectDate,
+  onEditEvent,
 }: {
   date: CalendarDate
   events: CalendarEvent[]
   onSelectDate: (date: CalendarDate) => void
+  onEditEvent: (event: CalendarEvent) => void
 }) {
   const cells = monthGrid(date)
   const todayKey = dateKey(today(getLocalTimeZone()))
@@ -262,6 +278,7 @@ function MonthGrid({
                   <EventDetailsTrigger
                     key={event.id}
                     event={event}
+                    onEdit={onEditEvent}
                     className={cx('flex min-w-0 items-center justify-between gap-1 rounded-md px-1.5 py-0.5 text-start text-caption-2-medium', EVENT_STYLES[event.color])}
                   >
                     <span className="min-w-0 truncate">{event.title}</span>
@@ -289,6 +306,7 @@ export function CalendarView({
   onDateChange,
   events,
   onCreateEvent,
+  onUpdateEvent,
   eventsLoading = false,
   eventsError = '',
 }: {
@@ -296,15 +314,12 @@ export function CalendarView({
   onDateChange: (date: CalendarDate) => void
   events: CalendarEvent[]
   onCreateEvent: (event: NewCalendarEvent) => Promise<CalendarEvent>
+  onUpdateEvent: (id: string, event: NewCalendarEvent) => Promise<CalendarEvent>
   eventsLoading?: boolean
   eventsError?: string
 }) {
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [draftDate, setDraftDate] = useState(currentDate)
-  const [allDay, setAllDay] = useState(false)
-  const [color, setColor] = useState<CalendarEventColor>('blue')
-  const [formError, setFormError] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const dateTriggerRef = useRef<HTMLButtonElement>(null)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
 
@@ -314,40 +329,24 @@ export function CalendarView({
     onDateChange(currentDate.set({ day: 1 }).add({ months: direction }))
   }
 
-  async function handleCreateEvent(formEvent: FormEvent<HTMLFormElement>) {
-    formEvent.preventDefault()
-    const formData = new FormData(formEvent.currentTarget)
-    const title = String(formData.get('title') ?? '').trim()
-    const description = String(formData.get('description') ?? '').trim()
-    const startTime = allDay ? null : String(formData.get('startTime') ?? '09:00')
-    const endTime = allDay ? null : String(formData.get('endTime') ?? '10:00')
+  function openCreate() {
+    setEditingEvent(null)
+    setFormOpen(true)
+  }
 
-    if (!title) return
-    if (!allDay && startTime && endTime && minutes(endTime) <= minutes(startTime)) {
-      setFormError('End time must be after start time.')
+  function openEdit(event: CalendarEvent) {
+    setEditingEvent(event)
+    setFormOpen(true)
+  }
+
+  async function handleSaveEvent(payload: NewCalendarEvent) {
+    if (editingEvent) {
+      const saved = await onUpdateEvent(editingEvent.id, payload)
+      onDateChange(parseSavedDate(saved.date, currentDate))
       return
     }
-
-    setSaving(true)
-    setFormError('')
-    try {
-      await onCreateEvent({
-        title,
-        description: description || null,
-        date: dateKey(draftDate),
-        startTime,
-        endTime,
-        allDay,
-        color,
-      })
-      onDateChange(draftDate)
-      setDialogOpen(false)
-      setAllDay(false)
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Unable to save event. Please try again.')
-    } finally {
-      setSaving(false)
-    }
+    const saved = await onCreateEvent(payload)
+    onDateChange(parseSavedDate(saved.date, currentDate))
   }
 
   return (
@@ -382,87 +381,9 @@ export function CalendarView({
             aria-label="Choose calendar date"
           />
 
-          <DialogTrigger isOpen={dialogOpen} onOpenChange={setDialogOpen}>
-            <Button
-              leadingIcon={Plus}
-              onClick={() => {
-                setDraftDate(currentDate)
-                setDialogOpen(true)
-              }}
-            >
-              New event
-            </Button>
-            <ModalOverlay
-              isDismissable
-              className={({ isEntering, isExiting }) => cx(
-                'fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-text-primary/30 p-4 backdrop-blur-sm',
-                isEntering && 'animate-in fade-in duration-150',
-                isExiting && 'animate-out fade-out duration-100',
-              )}
-            >
-              <Modal className="w-full max-w-md outline-none">
-                <Dialog aria-label="Create event" className="rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-xl sm:p-6">
-                  <form onSubmit={handleCreateEvent} className="flex flex-col gap-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-title-3-semibold text-text-primary">New event</h3>
-                        <p className="mt-1 text-body-regular text-text-secondary">Saved in this browser for this account.</p>
-                      </div>
-                      <IconButton
-                        icon={X}
-                        size="small"
-                        aria-label="Close event dialog"
-                        onClick={() => setDialogOpen(false)}
-                      />
-                    </div>
-
-                    <Input name="title" label="Event title" placeholder="Planning session" isRequired autoFocus />
-                    <Textarea name="description" label="Description" placeholder="Add notes or details (optional)" rows={3} />
-
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-caption-1-semibold text-text-primary">Date</span>
-                      <DatePicker value={draftDate} onChange={(date) => date && setDraftDate(date)} aria-label="Event date" />
-                    </div>
-
-                    <Checkbox isSelected={allDay} onChange={setAllDay}>All day</Checkbox>
-                    {!allDay && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input name="startTime" label="Starts" type="time" defaultValue="09:00" isRequired />
-                        <Input name="endTime" label="Ends" type="time" defaultValue="10:00" isRequired />
-                      </div>
-                    )}
-
-                    <fieldset className="flex flex-col gap-2">
-                      <legend className="text-caption-1-semibold text-text-primary">Color</legend>
-                      <div className="flex items-center gap-2">
-                        {(['blue', 'green', 'pink', 'purple', 'amber'] as CalendarEventColor[]).map((eventColor) => (
-                          <button
-                            key={eventColor}
-                            type="button"
-                            aria-label={`${eventColor} event color`}
-                            aria-pressed={color === eventColor}
-                            onClick={() => setColor(eventColor)}
-                            className={cx(
-                              'size-7 rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-border-focus-ring',
-                              EVENT_STYLES[eventColor],
-                              color === eventColor && 'ring-2 ring-border-focus-ring ring-offset-2',
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </fieldset>
-
-                    {formError && <p role="alert" className="text-body-regular text-text-error-primary">{formError}</p>}
-
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
-                      <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save event'}</Button>
-                    </div>
-                  </form>
-                </Dialog>
-              </Modal>
-            </ModalOverlay>
-          </DialogTrigger>
+          <Button leadingIcon={Plus} onClick={openCreate}>
+            New event
+          </Button>
         </div>
       </header>
 
@@ -476,13 +397,28 @@ export function CalendarView({
         date={currentDate}
         events={events}
         onSelectDate={onDateChange}
+        onEditEvent={openEdit}
+      />
+
+      <CreateEventModal
+        isOpen={formOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open)
+          if (!open) setEditingEvent(null)
+        }}
+        initialDate={currentDate}
+        event={editingEvent}
+        onSaveEvent={handleSaveEvent}
       />
     </section>
   )
 }
 
-function minutes(time: string) {
-  const [hour = 0, minute = 0] = time.split(':').map(Number)
-  return hour * 60 + minute
+function parseSavedDate(date: string, fallback: CalendarDate) {
+  try {
+    return parseDate(date)
+  } catch {
+    return fallback
+  }
 }
 
