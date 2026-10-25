@@ -85,8 +85,8 @@ export function DayCell(props: CalendarCellRenderProps & { isRange: boolean }) {
     return <div className="size-8" />;
   }
 
-  const isWeekStart = isSameDay(date, startOfWeek(date, locale));
-  const isWeekEnd = isSameDay(date, endOfWeek(date, locale));
+  const isWeekStart = (isSameDay as any)(date, (startOfWeek as any)(date, locale));
+  const isWeekEnd = (isSameDay as any)(date, (endOfWeek as any)(date, locale));
 
   // A plain (non-range) Calendar never sets isSelectionStart/isSelectionEnd —
   // those are range-only concepts, so they stay false even for the one

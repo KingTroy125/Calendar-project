@@ -8,9 +8,11 @@ import jwt from "jsonwebtoken";
 // browsers require for cross-site cookies.
 function cookieOptions({ includeMaxAge = true } = {}) {
   const isProduction = process.env.NODE_ENV === "production";
-  const sameSite = process.env.CROSS_SITE_COOKIES === "true" ? "none" : "lax";
+  // When using frontend proxy, we need Lax cookies on same origin
+  // When calling backend directly cross-site, need None + Secure
+  const sameSite = process.env.CROSS_SITE_COOKIES === "true" ? "none" : (isProduction ? "lax" : "lax");
 
-  const options = {
+  const options: any = {
     httpOnly: true,
     secure: isProduction,
     sameSite,

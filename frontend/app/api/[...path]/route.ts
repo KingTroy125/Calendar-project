@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const BACKEND_URL = process.env.BACKEND_URL?.replace(/\/+$/, "");
 
@@ -6,58 +7,103 @@ async function proxy(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  if (!BACKEND_URL) {
-    return NextResponse.json(
-      { error: "BACKEND_URL not configured" },
-      { status: 500 }
-    );
+  try {
+    if (!BACKEND_URL) {
+      console.error("BACKEND_URL not configured");
+      return NextResponse.json(
+        { error: "BACKEND_URL not configured" },
+        { status: 500 }
+      );
+    }
+
+    const { path } = await params;
+    const pathString = path.join("/");
+    const url = new URL(`/${pathString}`, BACKEND_URL);
+    url.search = req.nextUrl.search;
+
+    console.log(`[API Proxy] ${req.method} ${pathString} -> ${url.toString()}`);
+
+    const headers = new Headers();
+    req.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== "host") {
+        headers.set(key, value);
+      }
+    });
+
+    let body: BodyInit | undefined = undefined;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      body = await req.arrayBuffer();
+    }
+
+    const res = await fetch(url.toString(), {
+      method: req.method,
+      headers,
+      body,
+      redirect: "manual",
+    });
+
+    const responseData = await res.arrayBuffer();
+    const nextRes = new NextResponse(responseData, {
+      status: res.status,
+      statusText: res.statusText,
+    });
+
+    // Copy other headers
+    res.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey !== "content-encoding" && lowerKey !== "set-cookie") {
+        nextRes.headers.set(key, value);
+      }
+    });
+
+    console.log(`[API Proxy] Response: ${res.status} for ${pathString}`);
+    
+    // Handle Set-Cookie headers
+    const setCookieHeaders = (res.headers as any).getSetCookie?.();
+    if (Array.isArray(setCookieHeaders) && setCookieHeaders.length > 0) {
+      console.log(`[API Proxy] Forwarding ${setCookieHeaders.length} Set-Cookie headers`);
+      for (const cookie of setCookieHeaders) {
+        // Parse and set cookie using Next.js cookies API for better compatibility
+        const cookieParts = cookie.split(';');
+        const [nameValue] = cookieParts;
+        const [name, value] = nameValue.split('=');
+        
+        const cookieOptions: any = { path: '/' };
+        for (let i = 1; i < cookieParts.length; i++) {
+          const part = cookieParts[i].trim();
+          if (part.toLowerCase().startsWith('httponly')) cookieOptions.httpOnly = true;
+          else if (part.toLowerCase().startsWith('secure')) cookieOptions.secure = true;
+          else if (part.toLowerCase().startsWith('samesite=')) {
+            cookieOptions.sameSite = part.split('=')[1].toLowerCase();
+          } else if (part.toLowerCase().startsWith('max-age=')) {
+            cookieOptions.maxAge = parseInt(part.split('=')[1]);
+          } else if (part.toLowerCase().startsWith('expires=')) {
+            // skip expires
+          } else if (part.toLowerCase().startsWith('path=')) {
+            cookieOptions.path = part.split('=')[1];
+          }
+        }
+        
+        try {
+          nextRes.cookies.set(name.trim(), value.trim(), cookieOptions);
+        } catch (e) {
+          // Fallback to header
+          nextRes.headers.append("Set-Cookie", cookie);
+        }
+      }
+    } else {
+      const setCookie = res.headers.get("set-cookie");
+      if (setCookie) {
+        console.log(`[API Proxy] Forwarding Set-Cookie header`);
+        nextRes.headers.append("Set-Cookie", setCookie);
+      }
+    }
+
+    return nextRes;
+  } catch (error) {
+    console.error("Proxy error:", error);
+    return NextResponse.json({ error: "Proxy error" }, { status: 500 });
   }
-
-  const { path } = await params;
-  const pathString = path.join("/");
-  const url = new URL(`/${pathString}`, BACKEND_URL);
-  url.search = req.nextUrl.search;
-
-  const headers = new Headers();
-  
-  // Forward relevant headers
-  const contentType = req.headers.get("content-type");
-  if (contentType) headers.set("content-type", contentType);
-  
-  const cookie = req.headers.get("cookie");
-  if (cookie) headers.set("cookie", cookie);
-  
-  const userAgent = req.headers.get("user-agent");
-  if (userAgent) headers.set("user-agent", userAgent);
-
-  const body =
-    req.method === "GET" || req.method === "HEAD"
-      ? undefined
-      : await req.arrayBuffer();
-
-  const res = await fetch(url.toString(), {
-    method: req.method,
-    headers,
-    body,
-    redirect: "manual",
-  });
-
-  const responseHeaders = new Headers(res.headers);
-  responseHeaders.delete("content-encoding");
-
-  const nextRes = new NextResponse(res.body, {
-    status: res.status,
-    statusText: res.statusText,
-    headers: responseHeaders,
-  });
-
-  // Forward Set-Cookie headers explicitly to ensure cookies are set on the frontend origin
-  const setCookies = res.headers.getSetCookie?.() ?? [];
-  for (const c of setCookies) {
-    nextRes.headers.append("set-cookie", c);
-  }
-
-  return nextRes;
 }
 
 export { proxy as GET, proxy as POST, proxy as PUT, proxy as PATCH, proxy as DELETE, proxy as OPTIONS };
