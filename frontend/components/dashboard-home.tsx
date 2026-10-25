@@ -304,11 +304,6 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
         </div>
       </section>
 
-      <section className="scroll-mt-8 border-t border-separator-border pt-6">
-        <h2 className="text-title-2-medium text-text-primary">Account</h2>
-        <p className="mt-1 text-body-regular text-text-secondary">Signed in as {user.email}</p>
-      </section>
-
       <EventDetailModal
         event={detailEvent}
         isOpen={detailEvent !== null}
