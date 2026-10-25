@@ -96,4 +96,34 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.put("/:id", async (req, res) => {
+  const parsed = eventInput.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid event" });
+  }
+
+  const input = parsed.data;
+  try {
+    const existing = await prisma.event.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+    });
+    if (!existing) return res.status(404).json({ error: "Event not found" });
+
+    const event = await prisma.event.update({
+      where: { id: existing.id },
+      data: {
+        ...input,
+        description: input.description || null,
+        date: new Date(`${input.date}T00:00:00.000Z`),
+        startTime: input.allDay ? null : input.startTime,
+        endTime: input.allDay ? null : input.endTime,
+      },
+    });
+    res.json(toEventResponse(event));
+  } catch (error) {
+    console.error("Failed to update event:", error);
+    res.status(500).json({ error: "Unable to update event" });
+  }
+});
+
 export default router;
