@@ -7,6 +7,19 @@ async function proxy(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  // Handle OPTIONS preflight
+  if (req.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': req.headers.get('origin') || '*',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS,PATCH',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,Cookie,X-Requested-With',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
   try {
     if (!BACKEND_URL) {
       console.error("BACKEND_URL not configured");
