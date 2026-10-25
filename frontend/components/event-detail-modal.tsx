@@ -6,6 +6,7 @@ import {
   Calendar,
   Clock,
   AlignLeft,
+  Pencil,
   Tag,
 } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
@@ -91,10 +92,12 @@ export function EventDetailModal({
   event,
   isOpen,
   onClose,
+  onEdit,
 }: {
   event: CalendarEvent | null
   isOpen: boolean
   onClose: () => void
+  onEdit: (event: CalendarEvent) => void
 }) {
   if (!event) return null
 
@@ -217,9 +220,12 @@ export function EventDetailModal({
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end border-t border-separator-border pt-4">
+            <div className="flex justify-end gap-2 border-t border-separator-border pt-4">
               <Button variant="secondary" onClick={onClose}>
                 Close
+              </Button>
+              <Button leadingIcon={Pencil} onClick={() => onEdit(event)}>
+                Edit event
               </Button>
             </div>
           </div>
