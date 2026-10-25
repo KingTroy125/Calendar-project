@@ -43,6 +43,11 @@ async function proxy(
       }
     });
 
+    const cookie = req.headers.get("cookie");
+    if (cookie) {
+      headers.set("cookie", cookie);
+    }
+
     let body: BodyInit | undefined = undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {
       body = await req.arrayBuffer();

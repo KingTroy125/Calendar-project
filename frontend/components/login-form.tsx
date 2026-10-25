@@ -23,7 +23,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
       } else {
         await login(email, password)
       }
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     } catch (submitError) {
       setError(submitError instanceof BackendError ? submitError.message : 'Something went wrong. Please try again.')
     } finally {
