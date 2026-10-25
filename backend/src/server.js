@@ -97,9 +97,7 @@ async function startServer() {
 
 // Vercel imports this module and invokes the exported app; it must not open a
 // listener. Local development and `npm start` still get a normal server.
-if (process.env.VERCEL || process.env.NODE_ENV === "production" && !process.env.PORT) {
-  // In serverless, just export the app
-} else if (!process.env.VERCEL) {
+if (!process.env.VERCEL) {
 	startServer();
 }
 

@@ -12,7 +12,7 @@ function cookieOptions({ includeMaxAge = true } = {}) {
   // When calling backend directly cross-site, need None + Secure
   const sameSite = process.env.CROSS_SITE_COOKIES === "true" ? "none" : (isProduction ? "lax" : "lax");
 
-  const options: any = {
+  const options = {
     httpOnly: true,
     secure: isProduction,
     sameSite,
