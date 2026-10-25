@@ -83,3 +83,14 @@ export async function createCalendarEvent(event: NewCalendarEvent): Promise<Cale
   if (!res.ok) throw new BackendError(await getApiError(res), res.status);
   return res.json() as Promise<CalendarEvent>;
 }
+
+export async function updateCalendarEvent(id: string, event: NewCalendarEvent): Promise<CalendarEvent> {
+  const res = await fetch(`${API}/events/${id}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(event),
+  });
+  if (!res.ok) throw new BackendError(await getApiError(res), res.status);
+  return res.json() as Promise<CalendarEvent>;
+}
