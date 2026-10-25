@@ -11,13 +11,36 @@ import { prisma } from "./lib/prisma.js";
 // normal listener.
 const app = express();
 
-// With credentials enabled, CORS must name an exact origin. In production the
-// frontend is expected to call the API through its own `/api` rewrite, so a
-// same-origin request has no Origin header and CORS is not involved.
-const allowedOrigin =
-	process.env.FRONTEND_URL ?? (process.env.NODE_ENV === "production" ? false : true);
+// Handle preflight requests explicitly
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (process.env.FRONTEND_URL) {
+    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.status(204).send();
+});
 
-app.use(cors({ origin: allowedOrigin, credentials: true }));
+// With credentials enabled, CORS must name an exact origin.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (process.env.FRONTEND_URL) {
+    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,X-Requested-With');
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
