@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import type { CalendarDate } from '@internationalized/date'
+import { parseDate, type CalendarDate } from '@internationalized/date'
 import { Dialog, Modal, ModalOverlay } from 'react-aria-components'
-import { Plus, X } from 'lucide-react'
+import { Check, Plus, X } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
 import { Checkbox } from '@/components/base/checkbox/checkbox'
 import { DatePicker } from '@/components/base/date-picker/date-picker'
 import { IconButton } from '@/components/base/buttons/icon-button'
 import { Input } from '@/components/base/input/input'
 import { Textarea } from '@/components/base/textarea/textarea'
-import type { CalendarEventColor, NewCalendarEvent } from '@/lib/api'
+import type { CalendarEvent, CalendarEventColor, NewCalendarEvent } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
 const EVENT_COLORS: CalendarEventColor[] = ['blue', 'green', 'pink', 'purple', 'amber']
@@ -35,13 +35,16 @@ export function CreateEventModal({
   isOpen,
   onOpenChange,
   initialDate,
-  onCreateEvent,
+  event,
+  onSaveEvent,
 }: {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   initialDate: CalendarDate
-  onCreateEvent: (event: NewCalendarEvent) => Promise<void>
+  event?: CalendarEvent | null
+  onSaveEvent: (event: NewCalendarEvent) => Promise<void>
 }) {
+  const isEditing = Boolean(event)
   const [draftDate, setDraftDate] = useState<CalendarDate>(initialDate)
   const [allDay, setAllDay] = useState(false)
   const [color, setColor] = useState<CalendarEventColor>('blue')
@@ -50,12 +53,12 @@ export function CreateEventModal({
 
   useEffect(() => {
     if (!isOpen) return
-    setDraftDate(initialDate)
-    setAllDay(false)
-    setColor('blue')
+    setDraftDate(event ? parseDate(event.date) : initialDate)
+    setAllDay(event?.allDay ?? false)
+    setColor(event?.color ?? 'blue')
     setFormError('')
     setSaving(false)
-  }, [isOpen, initialDate])
+  }, [isOpen, initialDate, event])
 
   function close() {
     onOpenChange(false)
@@ -81,7 +84,7 @@ export function CreateEventModal({
     setSaving(true)
     setFormError('')
     try {
-      await onCreateEvent({
+      await onSaveEvent({
         title,
         description: description || null,
         date: draftDate.toString(),
@@ -106,18 +109,29 @@ export function CreateEventModal({
       }}
       isDismissable
       className={({ isEntering, isExiting }) => cx(
-        'fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-text-primary/30 p-4 backdrop-blur-sm',
+        'fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-text-primary/30 p-4 backdrop-blur-sm',
         isEntering && 'animate-in fade-in duration-150',
         isExiting && 'animate-out fade-out duration-100',
       )}
     >
       <Modal className="w-full max-w-md outline-none">
-        <Dialog aria-label="Create event" className="rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-xl sm:p-6">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Dialog
+          aria-label={isEditing ? 'Edit event' : 'Create event'}
+          className="rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-xl sm:p-6"
+        >
+          <form
+            key={`${event?.id ?? 'new'}-${isOpen ? 'open' : 'closed'}`}
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-5"
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-title-3-semibold text-text-primary">New event</h3>
-                <p className="mt-1 text-body-regular text-text-secondary">Fill in the details below.</p>
+                <h3 className="text-title-3-semibold text-text-primary">
+                  {isEditing ? 'Edit event' : 'New event'}
+                </h3>
+                <p className="mt-1 text-body-regular text-text-secondary">
+                  {isEditing ? 'Update the details below.' : 'Fill in the details below.'}
+                </p>
               </div>
               <IconButton
                 icon={X}
@@ -127,9 +141,22 @@ export function CreateEventModal({
               />
             </div>
 
-            <Input name="title" label="Event title" placeholder="Planning session" isRequired autoFocus />
+            <Input
+              name="title"
+              label="Event title"
+              placeholder="Planning session"
+              defaultValue={event?.title ?? ''}
+              isRequired
+              autoFocus
+            />
 
-            <Textarea name="description" label="Description" placeholder="Add notes or details (optional)" rows={3} />
+            <Textarea
+              name="description"
+              label="Description"
+              placeholder="Add notes or details (optional)"
+              defaultValue={event?.description ?? ''}
+              rows={3}
+            />
 
             <div className="flex flex-col gap-1.5">
               <span className="text-caption-1-semibold text-text-primary">Date</span>
@@ -140,8 +167,8 @@ export function CreateEventModal({
 
             {!allDay && (
               <div className="grid grid-cols-2 gap-3">
-                <Input name="startTime" label="Starts" type="time" defaultValue="09:00" isRequired />
-                <Input name="endTime" label="Ends" type="time" defaultValue="10:00" isRequired />
+                <Input name="startTime" label="Starts" type="time" defaultValue={event?.startTime ?? '09:00'} isRequired />
+                <Input name="endTime" label="Ends" type="time" defaultValue={event?.endTime ?? '10:00'} isRequired />
               </div>
             )}
 
@@ -170,9 +197,9 @@ export function CreateEventModal({
             {formError && <p role="alert" className="text-body-regular text-text-error-primary">{formError}</p>}
 
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={close} disabled={saving}>Cancel</Button>
-              <Button type="submit" disabled={saving} leadingIcon={Plus}>
-                {saving ? 'Saving...' : 'Save event'}
+              <Button type="button" variant="secondary" onClick={close} disabled={saving}>Cancel</Button>
+              <Button type="submit" disabled={saving} leadingIcon={isEditing ? Check : Plus}>
+                {saving ? 'Saving...' : isEditing ? 'Save changes' : 'Save event'}
               </Button>
             </div>
           </form>
