@@ -15,17 +15,18 @@ import { IconButton } from '@/components/base/buttons/icon-button'
 import { CalendarView } from '@/components/calendar-view'
 import { CreateEventModal } from '@/components/create-event-modal'
 import { EventDetailModal } from '@/components/event-detail-modal'
-import { BackendError, createCalendarEvent, displayName, getCalendarEvents, updateCalendarEvent, type CalendarEvent, type CurrentUser, type NewCalendarEvent } from '@/lib/api'
+import { BackendError, createCalendarEvent, displayName, getCalendarEvents, updateCalendarEvent, type CalendarEvent, type CurrentUser, type NewCalendarEvent, type WeekStartsOn } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
-function startOfWeek(date: CalendarDate) {
+function startOfWeek(date: CalendarDate, weekStartsOn: WeekStartsOn) {
   const weekday = date.toDate(getLocalTimeZone()).getDay()
-  return date.subtract({ days: (weekday + 6) % 7 })
+  const firstDay = weekStartsOn === 'sunday' ? 0 : 1
+  return date.subtract({ days: (weekday - firstDay + 7) % 7 })
 }
 
-function eventRange(date: CalendarDate) {
+function eventRange(date: CalendarDate, weekStartsOn: WeekStartsOn) {
   const monthStart = date.set({ day: 1 })
-  const firstVisibleDay = monthStart.subtract({ days: monthStart.toDate(getLocalTimeZone()).getDay() })
+  const firstVisibleDay = startOfWeek(monthStart, weekStartsOn)
   return {
     from: firstVisibleDay.toString(),
     to: firstVisibleDay.add({ days: 41 }).toString(),
@@ -50,8 +51,8 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
   const [eventsError, setEventsError] = useState('')
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
-  const { from: eventsFrom, to: eventsTo } = eventRange(selectedDate)
-  const weekStart = startOfWeek(selectedDate)
+  const { from: eventsFrom, to: eventsTo } = eventRange(selectedDate, user.weekStartsOn)
+  const weekStart = startOfWeek(selectedDate, user.weekStartsOn)
   const weekDays = Array.from({ length: 7 }, (_, index) => weekStart.add({ days: index }))
   const greetingName = displayName(user).split(' ')[0]
   const todayKey = today(getLocalTimeZone()).toString()
@@ -125,6 +126,8 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
           onUpdateEvent={handleUpdateEvent}
           eventsLoading={eventsLoading}
           eventsError={eventsError}
+          weekStartsOn={user.weekStartsOn}
+          defaultEventDuration={user.defaultEventDuration}
         />
       </main>
     )
@@ -316,6 +319,7 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
         }}
         initialDate={selectedDate}
         event={editingEvent}
+        defaultEventDuration={user.defaultEventDuration}
         onSaveEvent={async (payload) => {
           if (!editingEvent) return
           await handleUpdateEvent(editingEvent.id, payload)

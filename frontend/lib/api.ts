@@ -7,6 +7,8 @@ export class BackendError extends Error {
   }
 }
 
+export type WeekStartsOn = "sunday" | "monday";
+
 export type CurrentUser = {
   id: string;
   email: string;
@@ -15,12 +17,19 @@ export type CurrentUser = {
   bio: string | null;
   /** YYYY-MM-DD, or null when unset. */
   dateOfBirth: string | null;
+  /** Which day the week views start on. */
+  weekStartsOn: WeekStartsOn;
+  /** Default length in minutes for a new timed event. */
+  defaultEventDuration: number;
   createdAt: string;
 };
 
 /** Fields the settings screen can write. All are optional (partial save). */
 export type ProfileUpdate = Partial<
-  Pick<CurrentUser, "email" | "firstName" | "lastName" | "bio" | "dateOfBirth">
+  Pick<
+    CurrentUser,
+    "email" | "firstName" | "lastName" | "bio" | "dateOfBirth" | "weekStartsOn" | "defaultEventDuration"
+  >
 >;
 
 export type CalendarEventColor = "blue" | "green" | "pink" | "purple" | "amber";
@@ -55,6 +64,9 @@ function toCurrentUser(data: Record<string, unknown> | null, status: number): Cu
     lastName: text(data.lastName),
     bio: text(data.bio),
     dateOfBirth: text(data.dateOfBirth),
+    weekStartsOn: data.weekStartsOn === "sunday" ? "sunday" : "monday",
+    defaultEventDuration:
+      typeof data.defaultEventDuration === "number" ? data.defaultEventDuration : 60,
     createdAt: typeof data.createdAt === "string" ? data.createdAt : new Date().toISOString(),
   };
 }

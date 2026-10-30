@@ -18,7 +18,7 @@ import { Button } from '@/components/base/buttons/button'
 import { DatePicker } from '@/components/base/date-picker/date-picker'
 import { IconButton } from '@/components/base/buttons/icon-button'
 import { CreateEventModal } from '@/components/create-event-modal'
-import type { CalendarEvent, CalendarEventColor, NewCalendarEvent } from '@/lib/api'
+import type { CalendarEvent, CalendarEventColor, NewCalendarEvent, WeekStartsOn } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -46,14 +46,21 @@ function addDays(date: CalendarDate, amount: number) {
   return date.add({ days: amount })
 }
 
-function startOfWeek(date: CalendarDate) {
-  return date.subtract({ days: date.toDate(getLocalTimeZone()).getDay() })
+function startOfWeek(date: CalendarDate, weekStartsOn: WeekStartsOn) {
+  const weekday = date.toDate(getLocalTimeZone()).getDay()
+  const firstDay = weekStartsOn === 'sunday' ? 0 : 1
+  return date.subtract({ days: (weekday - firstDay + 7) % 7 })
 }
 
-function monthGrid(date: CalendarDate) {
+function monthGrid(date: CalendarDate, weekStartsOn: WeekStartsOn) {
   const firstOfMonth = date.set({ day: 1 })
-  const start = startOfWeek(firstOfMonth)
+  const start = startOfWeek(firstOfMonth, weekStartsOn)
   return Array.from({ length: 42 }, (_, index) => addDays(start, index))
+}
+
+/** Weekday headers rotated to match the configured first day of the week. */
+function weekdayHeaders(weekStartsOn: WeekStartsOn) {
+  return weekStartsOn === 'sunday' ? WEEKDAYS : [...WEEKDAYS.slice(1), WEEKDAYS[0]]
 }
 
 function formatDate(date: CalendarDate, options: Intl.DateTimeFormatOptions) {
@@ -220,19 +227,21 @@ function MonthGrid({
   events,
   onSelectDate,
   onEditEvent,
+  weekStartsOn,
 }: {
   date: CalendarDate
   events: CalendarEvent[]
   onSelectDate: (date: CalendarDate) => void
   onEditEvent: (event: CalendarEvent) => void
+  weekStartsOn: WeekStartsOn
 }) {
-  const cells = monthGrid(date)
+  const cells = monthGrid(date, weekStartsOn)
   const todayKey = dateKey(today(getLocalTimeZone()))
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border-button-default bg-background-secondary-default p-1.5 sm:p-2.5">
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-        {WEEKDAYS.map((day) => (
+        {weekdayHeaders(weekStartsOn).map((day) => (
           <div key={day} className="px-1 pb-1 text-center text-caption-1-medium text-text-secondary">
             <span className="sm:hidden">{day.slice(0, 1)}</span>
             <span className="hidden sm:inline">{day}</span>
@@ -309,6 +318,8 @@ export function CalendarView({
   onUpdateEvent,
   eventsLoading = false,
   eventsError = '',
+  weekStartsOn = 'monday',
+  defaultEventDuration = 60,
 }: {
   currentDate: CalendarDate
   onDateChange: (date: CalendarDate) => void
@@ -317,6 +328,8 @@ export function CalendarView({
   onUpdateEvent: (id: string, event: NewCalendarEvent) => Promise<CalendarEvent>
   eventsLoading?: boolean
   eventsError?: string
+  weekStartsOn?: WeekStartsOn
+  defaultEventDuration?: number
 }) {
   const [formOpen, setFormOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
@@ -398,6 +411,7 @@ export function CalendarView({
         events={events}
         onSelectDate={onDateChange}
         onEditEvent={openEdit}
+        weekStartsOn={weekStartsOn}
       />
 
       <CreateEventModal
@@ -408,6 +422,7 @@ export function CalendarView({
         }}
         initialDate={currentDate}
         event={editingEvent}
+        defaultEventDuration={defaultEventDuration}
         onSaveEvent={handleSaveEvent}
       />
     </section>

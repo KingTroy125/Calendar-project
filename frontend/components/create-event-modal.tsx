@@ -36,12 +36,15 @@ export function CreateEventModal({
   onOpenChange,
   initialDate,
   event,
+  defaultEventDuration = 60,
   onSaveEvent,
 }: {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   initialDate: CalendarDate
   event?: CalendarEvent | null
+  /** Minutes used to pre-fill the end time of a new timed event. */
+  defaultEventDuration?: number
   onSaveEvent: (event: NewCalendarEvent) => Promise<void>
 }) {
   const isEditing = Boolean(event)
@@ -50,6 +53,11 @@ export function CreateEventModal({
   const [color, setColor] = useState<CalendarEventColor>('blue')
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // A new event opens as 09:00 → 09:00 + the saved default length; editing
+  // keeps whatever the event already has.
+  const defaultStartTime = event?.startTime ?? '09:00'
+  const defaultEndTime = event?.endTime ?? addMinutes(defaultStartTime, defaultEventDuration)
 
   useEffect(() => {
     if (!isOpen) return
@@ -167,8 +175,8 @@ export function CreateEventModal({
 
             {!allDay && (
               <div className="grid grid-cols-2 gap-3">
-                <Input name="startTime" label="Starts" type="time" defaultValue={event?.startTime ?? '09:00'} isRequired />
-                <Input name="endTime" label="Ends" type="time" defaultValue={event?.endTime ?? '10:00'} isRequired />
+                <Input name="startTime" label="Starts" type="time" defaultValue={defaultStartTime} isRequired />
+                <Input name="endTime" label="Ends" type="time" defaultValue={defaultEndTime} isRequired />
               </div>
             )}
 
@@ -212,4 +220,12 @@ export function CreateEventModal({
 function minutes(time: string) {
   const [hour = 0, minute = 0] = time.split(':').map(Number)
   return hour * 60 + minute
+}
+
+/** "09:00" + 90 → "10:30", clamped to the end of the day. */
+function addMinutes(time: string, amount: number) {
+  const total = Math.min(minutes(time) + amount, 23 * 60 + 59)
+  const hour = Math.floor(total / 60)
+  const minute = total % 60
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }

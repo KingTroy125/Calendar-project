@@ -41,7 +41,6 @@ export interface SettingsModalProps {
   onSignOut?: () => void;
   signingOut?: boolean;
   defaultPage?: SettingsPage;
-  planArtSrc?: string;
 }
 
 type IconComponent = ComponentType<{
@@ -67,7 +66,6 @@ export function SettingsModal({
   onSignOut,
   signingOut,
   defaultPage = "profile",
-  planArtSrc,
 }: SettingsModalProps) {
   const direction = useDirection();
   const [page, setPage] = useState<SettingsPage>(defaultPage);
@@ -160,129 +158,139 @@ export function SettingsModal({
           visible ? "scale-100 opacity-100 blur-0" : "scale-[0.85] opacity-0 blur-[4px]",
         )}
       >
-      {/* Panel */}
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Settings"
-        tabIndex={-1}
-        className={cx(
-          "relative flex h-[614px] max-h-[calc(100dvh-32px)] w-[871px] max-w-[calc(100vw-32px)]",
-          // overflow-CLIP, not hidden: hidden boxes are still programmatically
-          // scrollable, so focusing a switch's hidden input in a row clipped
-          // by the inner scroller made the browser scroll-reveal it through
-          // the panel too — shifting the whole modal content up with no way
-          // back. clip forbids scrolling outright.
-          "overflow-clip rounded-3xl bg-background-full shadow-xs outline-none",
-        )}
-      >
-        {/* Nav rail — the board-team dropdown group/item recipe */}
-        <nav
-          aria-label="Settings sections"
-          className="flex w-14 shrink-0 flex-col gap-1.5 overflow-y-auto border-e border-separator-border bg-background-secondary-default p-2.5 sm:w-48 lg:w-60"
+        {/* Panel */}
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Settings"
+          tabIndex={-1}
+          className={cx(
+            "relative flex h-[614px] max-h-[calc(100dvh-32px)] w-[871px] max-w-[calc(100vw-32px)]",
+            // overflow-CLIP, not hidden: hidden boxes are still programmatically
+            // scrollable, so focusing a switch's hidden input in a row clipped
+            // by the inner scroller made the browser scroll-reveal it through
+            // the panel too — shifting the whole modal content up with no way
+            // back. clip forbids scrolling outright.
+            "overflow-clip rounded-3xl bg-background-full shadow-xs outline-none",
+          )}
         >
-          {NAV_ITEMS.map((item) => {
-            const selected = item.page === page;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                aria-label={item.label}
-                aria-current={selected ? "page" : undefined}
-                onClick={() => {
-                  setPage(item.page);
-                  setContentScrolled(false);
-                }}
-                className={cx(
-                  "flex w-full cursor-pointer items-center gap-2 rounded-2lg p-2 text-start",
-                  "outline-none transition-colors duration-150 ease focus-visible:ring-2 focus-visible:ring-border-focus-ring",
-                  selected
-                    ? "bg-background-secondary-hover"
-                    : "hover:bg-background-secondary-hover/60",
-                )}
-              >
-                <item.icon className="size-5 shrink-0 text-foreground-icon-secondary" aria-hidden />
-                <span
+          {/* Nav rail — the board-team dropdown group/item recipe */}
+          <nav
+            aria-label="Settings sections"
+            className="flex w-14 shrink-0 flex-col gap-1.5 overflow-y-auto border-e border-separator-border bg-background-secondary-default p-2.5 sm:w-48 lg:w-60"
+          >
+            {NAV_ITEMS.map((item) => {
+              const selected = item.page === page;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  aria-label={item.label}
+                  aria-current={selected ? "page" : undefined}
+                  onClick={() => {
+                    setPage(item.page);
+                    setContentScrolled(false);
+                  }}
                   className={cx(
-                    "hidden truncate text-body-medium sm:block",
-                    selected ? "text-text-primary" : "text-text-secondary",
+                    "flex w-full cursor-pointer items-center gap-2 rounded-2lg p-2 text-start",
+                    "outline-none transition-colors duration-150 ease focus-visible:ring-2 focus-visible:ring-border-focus-ring",
+                    selected
+                      ? "bg-background-secondary-hover"
+                      : "hover:bg-background-secondary-hover/60",
                   )}
                 >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+                  <item.icon className="size-5 shrink-0 text-foreground-icon-secondary" aria-hidden />
+                  <span
+                    className={cx(
+                      "hidden truncate text-body-medium sm:block",
+                      selected ? "text-text-primary" : "text-text-secondary",
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* Content pane — fixed title row, scrollable page below */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div
-            className="flex shrink-0 items-center justify-between px-8 pt-8 pb-3"
-          >
-            <h2 className="text-title-3-medium text-text-primary">{PAGE_TITLES[page]}</h2>
-            <button
-              type="button"
-              aria-label="Close settings"
-              onClick={onClose}
-              className={cx(
-                "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full",
-                "bg-background-tertiary-default text-foreground-icon-secondary",
-                "transition-colors duration-150 ease hover:bg-background-tertiary-hover",
-                "outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring",
-              )}
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          </div>
-          <div className="relative min-h-0 flex-1">
+          {/* Content pane — fixed title row, scrollable page below */}
+          <div className="flex min-w-0 flex-1 flex-col">
             <div
-              className="h-full overflow-y-auto px-8 pb-8"
-              onScroll={(e) => setContentScrolled(e.currentTarget.scrollTop > 0)}
+              className="flex shrink-0 items-center justify-between px-8 pt-8 pb-3"
             >
-              {page === "profile" ? (
-                <SettingsProfile
-                  user={user}
-                  onUserUpdated={onUserUpdated}
-                  onSaved={showSavedToast}
-                  onSignOut={onSignOut}
-                  signingOut={signingOut}
-                />
-              ) : (
-                <SettingsGeneral planArtSrc={planArtSrc} />
-              )}
+              <h2 className="text-title-3-medium text-text-primary">{PAGE_TITLES[page]}</h2>
+              <button
+                type="button"
+                aria-label="Close settings"
+                onClick={onClose}
+                className={cx(
+                  "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full",
+                  "bg-background-tertiary-default text-foreground-icon-secondary",
+                  "transition-colors duration-150 ease hover:bg-background-tertiary-hover",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring",
+                )}
+              >
+                <X className="size-4" aria-hidden />
+              </button>
             </div>
-            {/* Progressive top fade — eases in once the page is scrolled so
+            <div className="relative min-h-0 flex-1">
+              <div
+                className="h-full overflow-y-auto px-8 pb-8"
+                onScroll={(e) => setContentScrolled(e.currentTarget.scrollTop > 0)}
+              >
+                {page === "profile" ? (
+                  <SettingsProfile
+                    user={user}
+                    onUserUpdated={onUserUpdated}
+                    onSaved={showSavedToast}
+                    onSignOut={onSignOut}
+                    signingOut={signingOut}
+                  />
+                ) : (
+                  <SettingsGeneral
+                    user={user}
+                    onUserUpdated={onUserUpdated}
+                    onSaved={showSavedToast}
+                    onSignOut={onSignOut}
+                    signingOut={signingOut}
+                    onOpenProfile={() => {
+                      setPage("profile");
+                      setContentScrolled(false);
+                    }}
+                  />
+                )}
+              </div>
+              {/* Progressive top fade — eases in once the page is scrolled so
                 content dissolves under the title row instead of hard-cutting. */}
-            <div
-              aria-hidden
-              className={cx(
-                "pointer-events-none absolute inset-x-0 top-0 h-10 bg-linear-to-b from-background-primary-default to-transparent",
-                "transition-opacity duration-200 ease-out",
-                contentScrolled ? "opacity-100" : "opacity-0",
-              )}
-            />
+              <div
+                aria-hidden
+                className={cx(
+                  "pointer-events-none absolute inset-x-0 top-0 h-10 bg-linear-to-b from-background-primary-default to-transparent",
+                  "transition-opacity duration-200 ease-out",
+                  contentScrolled ? "opacity-100" : "opacity-0",
+                )}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Saved toast — straddles the panel's bottom edge, half in / half out. */}
-      <div
-        aria-live="polite"
-        className={cx(
-          "pointer-events-none absolute bottom-0 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1",
-          "rounded-full border border-border-button-default bg-background-primary-default py-1 pe-2.5 ps-1.5 shadow-dropdown",
-          "transition-[opacity,transform,filter] duration-200 ease-out",
-          savedPhase === "shown" && "translate-y-1/2 opacity-100 scale-100 blur-0",
-          // Starts below the resting spot, rises in; keeps drifting up on exit.
-          savedPhase === "hidden" && "translate-y-[calc(50%+12px)] opacity-0 scale-90 blur-[2px]",
-          savedPhase === "leaving" && "translate-y-[calc(50%-10px)] opacity-0 scale-90 blur-[2px]",
-        )}
-      >
-        <CheckCircle2 className="size-4 shrink-0 text-lime-600" aria-hidden />
-        <span className="text-body-2-medium whitespace-nowrap text-text-primary">Saved</span>
-      </div>
+        {/* Saved toast — straddles the panel's bottom edge, half in / half out. */}
+        <div
+          aria-live="polite"
+          className={cx(
+            "pointer-events-none absolute bottom-0 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1",
+            "rounded-full border border-border-button-default bg-background-primary-default py-1 pe-2.5 ps-1.5 shadow-dropdown",
+            "transition-[opacity,transform,filter] duration-200 ease-out",
+            savedPhase === "shown" && "translate-y-1/2 opacity-100 scale-100 blur-0",
+            // Starts below the resting spot, rises in; keeps drifting up on exit.
+            savedPhase === "hidden" && "translate-y-[calc(50%+12px)] opacity-0 scale-90 blur-[2px]",
+            savedPhase === "leaving" && "translate-y-[calc(50%-10px)] opacity-0 scale-90 blur-[2px]",
+          )}
+        >
+          <CheckCircle2 className="size-4 shrink-0 text-lime-600" aria-hidden />
+          <span className="text-body-2-medium whitespace-nowrap text-text-primary">Saved</span>
+        </div>
       </div>
     </div>,
     document.body,

@@ -29,6 +29,8 @@ const profileUpdate = z.object({
     }, "Date of birth is not a real date")
     .nullable()
     .optional(),
+  weekStartsOn: z.enum(["sunday", "monday"]).optional(),
+  defaultEventDuration: z.number().int().min(5).max(240).optional(),
 });
 
 const passwordChange = z.object({
@@ -45,6 +47,8 @@ function publicUser(user) {
     lastName: user.lastName ?? null,
     bio: user.bio ?? null,
     dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : null,
+    weekStartsOn: user.weekStartsOn ?? "monday",
+    defaultEventDuration: user.defaultEventDuration ?? 60,
     createdAt: user.createdAt,
   };
 }
@@ -108,7 +112,7 @@ router.patch("/me", requireAuth, async (req, res) => {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid profile" });
   }
 
-  const { email, firstName, lastName, bio, dateOfBirth } = parsed.data;
+  const { email, firstName, lastName, bio, dateOfBirth, weekStartsOn, defaultEventDuration } = parsed.data;
   const data = {};
 
   if (email !== undefined) data.email = email.trim().toLowerCase();
@@ -118,6 +122,8 @@ router.patch("/me", requireAuth, async (req, res) => {
   if (dateOfBirth !== undefined) {
     data.dateOfBirth = dateOfBirth ? new Date(`${dateOfBirth}T00:00:00.000Z`) : null;
   }
+  if (weekStartsOn !== undefined) data.weekStartsOn = weekStartsOn;
+  if (defaultEventDuration !== undefined) data.defaultEventDuration = defaultEventDuration;
 
   if (Object.keys(data).length === 0) {
     return res.status(400).json({ error: "Nothing to update" });

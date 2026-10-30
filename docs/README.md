@@ -53,6 +53,8 @@ Success: `201 Created`
   "lastName": null,
   "bio": null,
   "dateOfBirth": null,
+  "weekStartsOn": "monday",
+  "defaultEventDuration": 60,
   "createdAt": "2026-10-30T00:00:00.000Z"
 }
 ```
@@ -91,6 +93,8 @@ Success: `200 OK`
   "lastName": "Lovelace",
   "bio": "Building a calmer calendar.",
   "dateOfBirth": "1990-12-10",
+  "weekStartsOn": "monday",
+  "defaultEventDuration": 60,
   "createdAt": "2026-10-30T00:00:00.000Z"
 }
 ```
@@ -99,7 +103,7 @@ Success: `200 OK`
 
 ### `PATCH /auth/me`
 
-Updates the signed-in user's profile. Every field is optional, so the settings screen can save one field at a time. `dateOfBirth` accepts `YYYY-MM-DD` or `null`; empty names and bio are stored as `null`.
+Updates the signed-in user's profile and calendar preferences. Every field is optional, so the settings screen can save one field at a time. `dateOfBirth` accepts `YYYY-MM-DD` or `null`; empty names and bio are stored as `null`. `weekStartsOn` is `"sunday"` or `"monday"`; `defaultEventDuration` is an integer between 5 and 240 minutes.
 
 Request (any subset):
 
@@ -109,7 +113,9 @@ Request (any subset):
   "firstName": "Ada",
   "lastName": "Lovelace",
   "bio": "Building a calmer calendar.",
-  "dateOfBirth": "1990-12-10"
+  "dateOfBirth": "1990-12-10",
+  "weekStartsOn": "monday",
+  "defaultEventDuration": 60
 }
 ```
 
@@ -117,7 +123,7 @@ Success: `200 OK` with the updated public user body (same shape as `GET /auth/me
 
 Errors:
 
-- `400 Bad Request`: invalid email, name longer than 60 characters, bio longer than 280 characters, malformed date, or an empty body.
+- `400 Bad Request`: invalid email, name longer than 60 characters, bio longer than 280 characters, malformed date, unsupported `weekStartsOn`, out-of-range duration, or an empty body.
 - `401 Unauthorized`: not signed in.
 - `409 Conflict`: the new email is already used by another account.
 
