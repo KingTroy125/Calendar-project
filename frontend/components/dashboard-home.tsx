@@ -15,7 +15,7 @@ import { IconButton } from '@/components/base/buttons/icon-button'
 import { CalendarView } from '@/components/calendar-view'
 import { CreateEventModal } from '@/components/create-event-modal'
 import { EventDetailModal } from '@/components/event-detail-modal'
-import { BackendError, createCalendarEvent, getCalendarEvents, updateCalendarEvent, type CalendarEvent, type CurrentUser, type NewCalendarEvent } from '@/lib/api'
+import { BackendError, createCalendarEvent, displayName, getCalendarEvents, updateCalendarEvent, type CalendarEvent, type CurrentUser, type NewCalendarEvent } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
 function startOfWeek(date: CalendarDate) {
@@ -53,8 +53,7 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
   const { from: eventsFrom, to: eventsTo } = eventRange(selectedDate)
   const weekStart = startOfWeek(selectedDate)
   const weekDays = Array.from({ length: 7 }, (_, index) => weekStart.add({ days: index }))
-  const firstName = user.email.split('@')[0].split(/[._-]/)[0]
-  const greetingName = firstName.charAt(0).toUpperCase() + firstName.slice(1)
+  const greetingName = displayName(user).split(' ')[0]
   const todayKey = today(getLocalTimeZone()).toString()
   const weekStartKey = weekStart.toString()
   const weekEndKey = weekStart.add({ days: 6 }).toString()

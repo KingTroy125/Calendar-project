@@ -88,6 +88,8 @@ export function DashboardPage() {
         <DashboardSidebar
           selected={activeSection}
           accountEmail={user.email}
+          user={user}
+          onUserUpdated={setUser}
           onSignOut={handleSignOut}
           signingOut={signingOut}
           className="h-full"
@@ -109,6 +111,8 @@ export function DashboardPage() {
               fluid
               selected={activeSection}
               accountEmail={user.email}
+              user={user}
+              onUserUpdated={setUser}
               onSignOut={handleSignOut}
               signingOut={signingOut}
               onClose={() => setMobileNavOpen(false)}

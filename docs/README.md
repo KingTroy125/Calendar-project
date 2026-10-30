@@ -48,7 +48,12 @@ Success: `201 Created`
 ```json
 {
   "id": "user-id",
-  "email": "person@example.com"
+  "email": "person@example.com",
+  "firstName": null,
+  "lastName": null,
+  "bio": null,
+  "dateOfBirth": null,
+  "createdAt": "2026-10-30T00:00:00.000Z"
 }
 ```
 
@@ -65,7 +70,7 @@ Verifies credentials and establishes a session.
 
 Request: same shape as signup.
 
-Success: `200 OK`, with `{ "id": "user-id", "email": "person@example.com" }` and a new `token` cookie.
+Success: `200 OK`, with the same public user body as signup and a new `token` cookie.
 
 Errors currently returned by the route:
 
@@ -74,18 +79,67 @@ Errors currently returned by the route:
 
 ### `GET /auth/me`
 
-Returns the current authenticated user. The `requireAuth` middleware verifies the JWT cookie and supplies the user ID to the route. The route reads only `id` and `email` from the database.
+Returns the current authenticated user. The `requireAuth` middleware verifies the JWT cookie and supplies the user ID to the route. The route reads the public profile fields from the database; `passwordHash` is never returned.
 
 Success: `200 OK`
 
 ```json
 {
   "id": "user-id",
-  "email": "person@example.com"
+  "email": "person@example.com",
+  "firstName": "Ada",
+  "lastName": "Lovelace",
+  "bio": "Building a calmer calendar.",
+  "dateOfBirth": "1990-12-10",
+  "createdAt": "2026-10-30T00:00:00.000Z"
 }
 ```
 
 `401 Unauthorized` is returned when the cookie is missing/invalid or the user no longer exists.
+
+### `PATCH /auth/me`
+
+Updates the signed-in user's profile. Every field is optional, so the settings screen can save one field at a time. `dateOfBirth` accepts `YYYY-MM-DD` or `null`; empty names and bio are stored as `null`.
+
+Request (any subset):
+
+```json
+{
+  "email": "person@example.com",
+  "firstName": "Ada",
+  "lastName": "Lovelace",
+  "bio": "Building a calmer calendar.",
+  "dateOfBirth": "1990-12-10"
+}
+```
+
+Success: `200 OK` with the updated public user body (same shape as `GET /auth/me`).
+
+Errors:
+
+- `400 Bad Request`: invalid email, name longer than 60 characters, bio longer than 280 characters, malformed date, or an empty body.
+- `401 Unauthorized`: not signed in.
+- `409 Conflict`: the new email is already used by another account.
+
+### `PATCH /auth/password`
+
+Changes the password for the signed-in account and keeps the current session.
+
+Request:
+
+```json
+{
+  "currentPassword": "current-password",
+  "newPassword": "at-least-eight-characters"
+}
+```
+
+Success: `204 No Content`.
+
+Errors:
+
+- `400 Bad Request`: new password shorter than 8 characters or the account has no password.
+- `401 Unauthorized`: not signed in, or `currentPassword` is wrong.
 
 ### `POST /auth/logout`
 
@@ -138,6 +192,8 @@ These are recommendations, not claims about existing behavior:
 - Signup rejects invalid input and duplicate email with the documented status codes.
 - Login succeeds for the correct password; wrong password and unknown account return the same `401` body.
 - `/auth/me` succeeds with a valid cookie and returns `401` when unauthenticated.
+- `PATCH /auth/me` persists each profile field, rejects duplicate emails with `409`, and returns the refreshed user.
+- `PATCH /auth/password` rejects a wrong current password and accepts a valid change.
 - Logout clears the cookie with matching cookie attributes.
 - CORS permits the configured frontend origin with credentials and rejects unapproved origins.
 - Logs never contain credentials, JWTs, or cookie values.

@@ -25,6 +25,7 @@ import { Badge } from "@/components/base/badges/badge";
 import { IconButton } from "@/components/base/buttons/icon-button";
 import { Kbd } from "@/components/base/kbd/kbd";
 import { cx } from "@/utils/cx";
+import { displayName, type CurrentUser } from "@/lib/api";
 
 /**
  * Figma sources:
@@ -195,6 +196,8 @@ export function DashboardSidebar({
   items = DASHBOARD_NAV,
   flat = false,
   accountEmail = "",
+  user,
+  onUserUpdated,
   onSignOut,
   signingOut = false,
   className,
@@ -217,6 +220,9 @@ export function DashboardSidebar({
   /** Removes the floating panel treatment for a sidebar revealed beneath mobile content. */
   flat?: boolean;
   accountEmail?: string;
+  /** The signed-in account. Enables the Profile page in the settings modal. */
+  user?: CurrentUser;
+  onUserUpdated?: (user: CurrentUser) => void;
   onSignOut?: () => void;
   signingOut?: boolean;
   className?: string;
@@ -226,6 +232,15 @@ export function DashboardSidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const collapsed = mobile ? false : collapsedState;
+
+  const email = accountEmail || user?.email || "";
+  const name = user ? displayName(user) : "Signed in";
+  const initials = (() => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (parts.length === 1 && parts[0] !== "Signed in") return parts[0].slice(0, 2).toUpperCase();
+    return email.slice(0, 2).toUpperCase() || "?";
+  })();
 
   return localize((
     <aside
@@ -385,10 +400,10 @@ export function DashboardSidebar({
             />
           ) : (
             <>
-              <Avatar size="md" color="blue" initials={accountEmail.slice(0, 2).toUpperCase() || "?"} />
+              <Avatar size="md" color="blue" initials={initials} />
               <div className="min-w-0 flex-1">
-                <p className="text-caption-1-semibold text-text-primary">Signed in</p>
-                <p className="truncate text-caption-2-regular text-text-secondary">{accountEmail}</p>
+                <p className="truncate text-caption-1-semibold text-text-primary">{name}</p>
+                <p className="truncate text-caption-2-regular text-text-secondary">{email}</p>
               </div>
               <IconButton
                 icon={LogOut}
@@ -412,10 +427,16 @@ export function DashboardSidebar({
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      />
+      {user && (
+        <SettingsModal
+          isOpen={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          user={user}
+          onUserUpdated={onUserUpdated}
+          onSignOut={onSignOut}
+          signingOut={signingOut}
+        />
+      )}
     </aside>
   ));
 }

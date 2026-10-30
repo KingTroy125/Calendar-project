@@ -7,7 +7,22 @@ export class BackendError extends Error {
   }
 }
 
-export type CurrentUser = { id: string; email: string };
+export type CurrentUser = {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  bio: string | null;
+  /** YYYY-MM-DD, or null when unset. */
+  dateOfBirth: string | null;
+  createdAt: string;
+};
+
+/** Fields the settings screen can write. All are optional (partial save). */
+export type ProfileUpdate = Partial<
+  Pick<CurrentUser, "email" | "firstName" | "lastName" | "bio" | "dateOfBirth">
+>;
+
 export type CalendarEventColor = "blue" | "green" | "pink" | "purple" | "amber";
 export type CalendarEvent = {
   id: string;
@@ -26,6 +41,24 @@ async function getApiError(res: Response) {
   return typeof data?.error === "string" ? data.error : res.statusText;
 }
 
+function toCurrentUser(data: Record<string, unknown> | null, status: number): CurrentUser {
+  if (typeof data?.id !== "string" || typeof data.email !== "string") {
+    throw new BackendError("Invalid account response", status);
+  }
+
+  const text = (value: unknown) => (typeof value === "string" && value ? value : null);
+
+  return {
+    id: data.id,
+    email: data.email,
+    firstName: text(data.firstName),
+    lastName: text(data.lastName),
+    bio: text(data.bio),
+    dateOfBirth: text(data.dateOfBirth),
+    createdAt: typeof data.createdAt === "string" ? data.createdAt : new Date().toISOString(),
+  };
+}
+
 async function postAuth(path: "login" | "signup", email: string, password: string) {
   const res = await fetch(`${API}/auth/${path}`, {
     method: "POST",
@@ -33,12 +66,12 @@ async function postAuth(path: "login" | "signup", email: string, password: strin
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  const data = await res.json().catch(() => null) as { error?: unknown } | null;
+  const data = await res.json().catch(() => null) as Record<string, unknown> | null;
   if (!res.ok) {
     const message = typeof data?.error === "string" ? data.error : res.statusText;
     throw new BackendError(message, res.status);
   }
-  return data;
+  return toCurrentUser(data, res.status);
 }
 
 export function login(email: string, password: string) {
@@ -56,10 +89,33 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     const message = typeof data?.error === "string" ? data.error : res.statusText;
     throw new BackendError(message, res.status);
   }
-  if (typeof data?.id !== "string" || typeof data.email !== "string") {
-    throw new BackendError("Invalid account response", res.status);
+  return toCurrentUser(data, res.status);
+}
+
+/** Save one or more profile fields. Returns the refreshed user. */
+export async function updateProfile(update: ProfileUpdate): Promise<CurrentUser> {
+  const res = await fetch(`${API}/auth/me`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(update),
+  });
+  const data = await res.json().catch(() => null) as Record<string, unknown> | null;
+  if (!res.ok) {
+    const message = typeof data?.error === "string" ? data.error : res.statusText;
+    throw new BackendError(message, res.status);
   }
-  return { id: data.id, email: data.email };
+  return toCurrentUser(data, res.status);
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const res = await fetch(`${API}/auth/password`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!res.ok) throw new BackendError(await getApiError(res), res.status);
 }
 
 export async function logout() {
@@ -94,4 +150,12 @@ export async function updateCalendarEvent(id: string, event: NewCalendarEvent): 
   });
   if (!res.ok) throw new BackendError(await getApiError(res), res.status);
   return res.json() as Promise<CalendarEvent>;
+}
+
+/** "Ada Lovelace", falling back to the part of the email before the @. */
+export function displayName(user: Pick<CurrentUser, "firstName" | "lastName" | "email">) {
+  const full = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  if (full) return full;
+  const handle = user.email.split("@")[0] ?? "";
+  return handle ? handle.charAt(0).toUpperCase() + handle.slice(1) : "there";
 }

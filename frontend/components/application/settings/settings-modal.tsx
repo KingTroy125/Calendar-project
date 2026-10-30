@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, GraduationCap, Settings2, X } from "lucide-react";
 import { cx } from "@/utils/cx";
+import type { CurrentUser } from "@/lib/api";
 import { SettingsGeneral } from "./settings-general";
 import { SettingsProfile } from "./settings-profile";
 
@@ -34,6 +35,11 @@ export type SettingsPage = "general" | "profile";
 export interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** The signed-in account whose profile the Profile page edits. */
+  user: CurrentUser;
+  onUserUpdated?: (user: CurrentUser) => void;
+  onSignOut?: () => void;
+  signingOut?: boolean;
   defaultPage?: SettingsPage;
   planArtSrc?: string;
 }
@@ -56,7 +62,11 @@ const PAGE_TITLES: Record<SettingsPage, string> = {
 export function SettingsModal({
   isOpen,
   onClose,
-  defaultPage = "general",
+  user,
+  onUserUpdated,
+  onSignOut,
+  signingOut,
+  defaultPage = "profile",
   planArtSrc,
 }: SettingsModalProps) {
   const direction = useDirection();
@@ -232,7 +242,13 @@ export function SettingsModal({
               onScroll={(e) => setContentScrolled(e.currentTarget.scrollTop > 0)}
             >
               {page === "profile" ? (
-                <SettingsProfile onSaved={showSavedToast} />
+                <SettingsProfile
+                  user={user}
+                  onUserUpdated={onUserUpdated}
+                  onSaved={showSavedToast}
+                  onSignOut={onSignOut}
+                  signingOut={signingOut}
+                />
               ) : (
                 <SettingsGeneral planArtSrc={planArtSrc} />
               )}

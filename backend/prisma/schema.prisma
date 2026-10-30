@@ -19,6 +19,10 @@ model User {
   id           String    @id @default(cuid())
   email        String    @unique
   passwordHash String?
+  firstName    String?
+  lastName     String?
+  bio          String?
+  dateOfBirth  DateTime? @db.Date
   createdAt    DateTime  @default(now())
   accounts     Account[]
   events       Event[]
