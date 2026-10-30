@@ -39,27 +39,6 @@ export default function Home() {
       <main className="flex-1">
         <LandingHero />
       </main>
-
-      <footer className="border-t border-separator-border">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-3 px-4 py-8 sm:flex-row sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <span className="flex size-6 items-center justify-center rounded-full bg-accent-50 text-accent-700" aria-hidden>
-              <Calendar className="size-3.5" />
-            </span>
-            <span className="text-caption-1-regular text-text-secondary">
-              © Calendar
-            </span>
-          </div>
-          <nav aria-label="Footer" className="flex items-center gap-4 text-caption-1-regular text-text-secondary">
-            <Link href="/login" className="rounded outline-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring">
-              Log in
-            </Link>
-            <Link href="/signup" className="rounded outline-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring">
-              Sign up
-            </Link>
-          </nav>
-        </div>
-      </footer>
     </div>
   );
 }
