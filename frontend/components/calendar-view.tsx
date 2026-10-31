@@ -13,11 +13,14 @@ import {
   Pencil,
   Tag,
   Trash2,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
 import { DatePicker } from '@/components/base/date-picker/date-picker'
 import { IconButton } from '@/components/base/buttons/icon-button'
+import { Skeleton } from '@/components/base/skeleton/skeleton'
+import { Spinner } from '@/components/base/spinner/spinner'
 import { CreateEventModal } from '@/components/create-event-modal'
 import type { CalendarEvent, CalendarEventColor, NewCalendarEvent, WeekStartsOn } from '@/lib/api'
 import { cx } from '@/utils/cx'
@@ -225,15 +228,19 @@ function EventDetailsTrigger({
 
           <div className="flex flex-col gap-2 pt-1">
             {deleteError && (
-              <p role="alert" className="text-caption-1-regular text-text-error-primary">
+              <p role="alert" className="flex items-center gap-1.5 text-caption-1-regular text-text-error-primary">
+                <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
                 {deleteError}
               </p>
             )}
             {confirmingDelete ? (
               <>
-                <p className="text-caption-1-regular text-text-secondary">
-                  Delete this event? This can&apos;t be undone.
-                </p>
+                <div className="flex items-start gap-2 rounded-xl bg-status-rose-background px-3 py-2.5">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-status-rose-text" aria-hidden />
+                  <p className="text-caption-1-regular text-status-rose-text">
+                    Delete &ldquo;{event.title}&rdquo;? This can&apos;t be undone.
+                  </p>
+                </div>
                 <div className="flex justify-end gap-2">
                   <Button
                     size="small"
@@ -246,11 +253,17 @@ function EventDetailsTrigger({
                   <Button
                     size="small"
                     variant="danger"
-                    leadingIcon={Trash2}
+                    leadingIcon={deleting ? undefined : Trash2}
                     onClick={handleDelete}
                     disabled={deleting}
                   >
-                    {deleting ? 'Deleting...' : 'Delete event'}
+                    {deleting ? (
+                      <span className="flex items-center gap-1.5">
+                        <Spinner size="xs" aria-hidden /> Deleting…
+                      </span>
+                    ) : (
+                      'Delete event'
+                    )}
                   </Button>
                 </div>
               </>
@@ -258,9 +271,8 @@ function EventDetailsTrigger({
               <div className="flex items-center justify-between gap-2">
                 <Button
                   size="small"
-                  variant="ghost"
+                  variant="danger"
                   leadingIcon={Trash2}
-                  className="text-text-error-primary"
                   onClick={() => setConfirmingDelete(true)}
                 >
                   Delete
@@ -281,6 +293,33 @@ function EventDetailsTrigger({
         </Dialog>
       </Popover>
     </DialogTrigger>
+  )
+}
+
+function MonthGridSkeleton({ weekStartsOn }: { weekStartsOn: WeekStartsOn }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border-button-default bg-background-secondary-default p-1.5 sm:p-2.5">
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+        {weekdayHeaders(weekStartsOn).map((day) => (
+          <div key={day} className="px-1 pb-1 text-center text-caption-1-medium text-text-secondary">
+            <span className="sm:hidden">{day.slice(0, 1)}</span>
+            <span className="hidden sm:inline">{day}</span>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+        {Array.from({ length: 42 }, (_, i) => (
+          <div
+            key={i}
+            className="flex min-h-24 min-w-0 flex-col rounded-xl border border-border-button-default bg-background-primary-default p-1.5 sm:min-h-32 sm:p-2.5 lg:min-h-36"
+          >
+            <Skeleton className="size-7 rounded-full" />
+            {i % 5 === 0 && <Skeleton className="mt-auto h-4 w-full rounded-md" />}
+            {i % 7 === 1 && <Skeleton className="mt-1 h-4 w-3/4 rounded-md" />}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -468,19 +507,24 @@ export function CalendarView({
       </header>
 
       {eventsError ? (
-        <p role="alert" className="text-body-regular text-text-error-primary">{eventsError}</p>
-      ) : eventsLoading ? (
-        <p role="status" className="text-body-regular text-text-secondary">Loading events...</p>
+        <div role="alert" className="flex items-center gap-2 rounded-2xl border border-status-rose-text/20 bg-status-rose-background px-4 py-3 text-body-regular text-status-rose-text">
+          <AlertTriangle className="size-4 shrink-0" aria-hidden />
+          {eventsError}
+        </div>
       ) : null}
 
-      <MonthGrid
-        date={currentDate}
-        events={events}
-        onSelectDate={onDateChange}
-        onEditEvent={openEdit}
-        onDeleteEvent={onDeleteEvent}
-        weekStartsOn={weekStartsOn}
-      />
+      {eventsLoading ? (
+        <MonthGridSkeleton weekStartsOn={weekStartsOn} />
+      ) : (
+        <MonthGrid
+          date={currentDate}
+          events={events}
+          onSelectDate={onDateChange}
+          onEditEvent={openEdit}
+          onDeleteEvent={onDeleteEvent}
+          weekStartsOn={weekStartsOn}
+        />
+      )}
 
       <CreateEventModal
         isOpen={formOpen}
@@ -504,4 +548,3 @@ function parseSavedDate(date: string, fallback: CalendarDate) {
     return fallback
   }
 }
-
