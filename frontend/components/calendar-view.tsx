@@ -12,6 +12,7 @@ import {
   Globe,
   Pencil,
   Tag,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
@@ -136,16 +137,34 @@ function EventDetailsTrigger({
   className,
   style,
   onEdit,
+  onDelete,
   children,
 }: {
   event: CalendarEvent
   className: string
   style?: CSSProperties
   onEdit: (event: CalendarEvent) => void
+  onDelete: (event: CalendarEvent) => Promise<void>
   children: ReactNode
 }) {
   const duration = eventDuration(event)
   const [open, setOpen] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  async function handleDelete() {
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await onDelete(event)
+      setOpen(false)
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Unable to delete event.')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <DialogTrigger isOpen={open} onOpenChange={setOpen}>
@@ -204,17 +223,60 @@ function EventDetailsTrigger({
             </DetailRow>
           )}
 
-          <div className="flex justify-end pt-1">
-            <Button
-              size="small"
-              leadingIcon={Pencil}
-              onClick={() => {
-                setOpen(false)
-                onEdit(event)
-              }}
-            >
-              Edit event
-            </Button>
+          <div className="flex flex-col gap-2 pt-1">
+            {deleteError && (
+              <p role="alert" className="text-caption-1-regular text-text-error-primary">
+                {deleteError}
+              </p>
+            )}
+            {confirmingDelete ? (
+              <>
+                <p className="text-caption-1-regular text-text-secondary">
+                  Delete this event? This can&apos;t be undone.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="danger"
+                    leadingIcon={Trash2}
+                    onClick={handleDelete}
+                    disabled={deleting}
+                  >
+                    {deleting ? 'Deleting...' : 'Delete event'}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  size="small"
+                  variant="ghost"
+                  leadingIcon={Trash2}
+                  className="text-text-error-primary"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  Delete
+                </Button>
+                <Button
+                  size="small"
+                  leadingIcon={Pencil}
+                  onClick={() => {
+                    setOpen(false)
+                    onEdit(event)
+                  }}
+                >
+                  Edit event
+                </Button>
+              </div>
+            )}
           </div>
         </Dialog>
       </Popover>
@@ -227,12 +289,14 @@ function MonthGrid({
   events,
   onSelectDate,
   onEditEvent,
+  onDeleteEvent,
   weekStartsOn,
 }: {
   date: CalendarDate
   events: CalendarEvent[]
   onSelectDate: (date: CalendarDate) => void
   onEditEvent: (event: CalendarEvent) => void
+  onDeleteEvent: (event: CalendarEvent) => Promise<void>
   weekStartsOn: WeekStartsOn
 }) {
   const cells = monthGrid(date, weekStartsOn)
@@ -288,6 +352,7 @@ function MonthGrid({
                     key={event.id}
                     event={event}
                     onEdit={onEditEvent}
+                    onDelete={onDeleteEvent}
                     className={cx('flex min-w-0 items-center justify-between gap-1 rounded-md px-1.5 py-0.5 text-start text-caption-2-medium', EVENT_STYLES[event.color])}
                   >
                     <span className="min-w-0 truncate">{event.title}</span>
@@ -316,6 +381,7 @@ export function CalendarView({
   events,
   onCreateEvent,
   onUpdateEvent,
+  onDeleteEvent,
   eventsLoading = false,
   eventsError = '',
   weekStartsOn = 'monday',
@@ -326,6 +392,7 @@ export function CalendarView({
   events: CalendarEvent[]
   onCreateEvent: (event: NewCalendarEvent) => Promise<CalendarEvent>
   onUpdateEvent: (id: string, event: NewCalendarEvent) => Promise<CalendarEvent>
+  onDeleteEvent: (event: CalendarEvent) => Promise<void>
   eventsLoading?: boolean
   eventsError?: string
   weekStartsOn?: WeekStartsOn
@@ -411,6 +478,7 @@ export function CalendarView({
         events={events}
         onSelectDate={onDateChange}
         onEditEvent={openEdit}
+        onDeleteEvent={onDeleteEvent}
         weekStartsOn={weekStartsOn}
       />
 

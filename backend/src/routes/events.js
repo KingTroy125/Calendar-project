@@ -126,4 +126,19 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    const existing = await prisma.event.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+    });
+    if (!existing) return res.status(404).json({ error: "Event not found" });
+
+    await prisma.event.delete({ where: { id: existing.id } });
+    res.sendStatus(204);
+  } catch (error) {
+    console.error("Failed to delete event:", error);
+    res.status(500).json({ error: "Unable to delete event" });
+  }
+});
+
 export default router;

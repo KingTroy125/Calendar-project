@@ -15,7 +15,7 @@ import { IconButton } from '@/components/base/buttons/icon-button'
 import { CalendarView } from '@/components/calendar-view'
 import { CreateEventModal } from '@/components/create-event-modal'
 import { EventDetailModal } from '@/components/event-detail-modal'
-import { BackendError, createCalendarEvent, displayName, getCalendarEvents, updateCalendarEvent, type CalendarEvent, type CurrentUser, type NewCalendarEvent, type WeekStartsOn } from '@/lib/api'
+import { BackendError, createCalendarEvent, deleteCalendarEvent, displayName, getCalendarEvents, updateCalendarEvent, type CalendarEvent, type CurrentUser, type NewCalendarEvent, type WeekStartsOn } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
 function startOfWeek(date: CalendarDate, weekStartsOn: WeekStartsOn) {
@@ -110,6 +110,13 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
     return savedEvent
   }
 
+  async function handleDeleteEvent(event: CalendarEvent) {
+    await deleteCalendarEvent(event.id)
+    setEvents((currentEvents) => currentEvents.filter((item) => item.id !== event.id))
+    setDetailEvent((current) => (current?.id === event.id ? null : current))
+    setEditingEvent((current) => (current?.id === event.id ? null : current))
+  }
+
   function openEditEvent(event: CalendarEvent) {
     setDetailEvent(null)
     setEditingEvent(event)
@@ -124,6 +131,7 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
           events={events}
           onCreateEvent={handleCreateEvent}
           onUpdateEvent={handleUpdateEvent}
+          onDeleteEvent={handleDeleteEvent}
           eventsLoading={eventsLoading}
           eventsError={eventsError}
           weekStartsOn={user.weekStartsOn}
@@ -307,10 +315,12 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
       </section>
 
       <EventDetailModal
+        key={detailEvent?.id ?? 'closed'}
         event={detailEvent}
         isOpen={detailEvent !== null}
         onClose={() => setDetailEvent(null)}
         onEdit={openEditEvent}
+        onDelete={handleDeleteEvent}
       />
       <CreateEventModal
         isOpen={editingEvent !== null}

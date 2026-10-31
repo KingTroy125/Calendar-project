@@ -164,6 +164,14 @@ export async function updateCalendarEvent(id: string, event: NewCalendarEvent): 
   return res.json() as Promise<CalendarEvent>;
 }
 
+export async function deleteCalendarEvent(id: string): Promise<void> {
+  const res = await fetch(`${API}/events/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) throw new BackendError(await getApiError(res), res.status);
+}
+
 /** "Ada Lovelace", falling back to the part of the email before the @. */
 export function displayName(user: Pick<CurrentUser, "firstName" | "lastName" | "email">) {
   const full = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Dialog, Modal, ModalOverlay } from 'react-aria-components'
 import {
   X,
@@ -8,10 +9,11 @@ import {
   AlignLeft,
   Pencil,
   Tag,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
 import { IconButton } from '@/components/base/buttons/icon-button'
-import type { CalendarEvent, CalendarEventColor } from '@/lib/api'
+import { BackendError, type CalendarEvent, type CalendarEventColor } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
 const EVENT_ACCENT_BAR: Record<CalendarEventColor, string> = {
@@ -93,13 +95,40 @@ export function EventDetailModal({
   isOpen,
   onClose,
   onEdit,
+  onDelete,
 }: {
   event: CalendarEvent | null
   isOpen: boolean
   onClose: () => void
   onEdit: (event: CalendarEvent) => void
+  onDelete?: (event: CalendarEvent) => Promise<void>
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
   if (!event) return null
+
+  function handleClose() {
+    setConfirmingDelete(false)
+    setDeleteError('')
+    onClose()
+  }
+
+  async function handleDelete() {
+    if (!event || !onDelete) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await onDelete(event)
+    } catch (error) {
+      setDeleteError(
+        error instanceof BackendError ? error.message : 'Unable to delete this event. Please try again.',
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const timeLabel = event.allDay
     ? 'All day'
@@ -126,7 +155,7 @@ export function EventDetailModal({
   return (
     <ModalOverlay
       isOpen={isOpen}
-      onOpenChange={(open) => { if (!open) onClose() }}
+      onOpenChange={(open) => { if (!open) handleClose() }}
       isDismissable
       className={({ isEntering, isExiting }) =>
         cx(
@@ -220,13 +249,57 @@ export function EventDetailModal({
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-2 border-t border-separator-border pt-4">
-              <Button variant="secondary" onClick={onClose}>
-                Close
-              </Button>
-              <Button leadingIcon={Pencil} onClick={() => onEdit(event)}>
-                Edit event
-              </Button>
+            <div className="flex flex-col gap-3 border-t border-separator-border pt-4">
+              {deleteError && (
+                <p role="alert" className="text-body-2-regular text-text-error-primary">
+                  {deleteError}
+                </p>
+              )}
+
+              {confirmingDelete ? (
+                <>
+                  <p className="text-body-2-regular text-text-secondary">
+                    Delete “{event.title}”? This can’t be undone.
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setConfirmingDelete(false)}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="danger"
+                      leadingIcon={Trash2}
+                      onClick={handleDelete}
+                      disabled={deleting}
+                    >
+                      {deleting ? 'Deleting...' : 'Delete event'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Button
+                    variant="ghost"
+                    leadingIcon={Trash2}
+                    className="text-text-error-primary"
+                    onClick={() => setConfirmingDelete(true)}
+                    disabled={!onDelete}
+                  >
+                    Delete
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" onClick={handleClose}>
+                      Close
+                    </Button>
+                    <Button leadingIcon={Pencil} onClick={() => onEdit(event)}>
+                      Edit event
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Dialog>
