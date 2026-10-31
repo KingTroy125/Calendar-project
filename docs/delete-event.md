@@ -53,3 +53,7 @@ checked end to end:
 - deleting as a different user → `404`
 - deleting twice → `404`
 - deleting without a session → `401`
+
+The browser flow was also exercised end to end: delete from the event detail
+modal and from the month-grid popover both remove the event and refresh the
+dashboard counts.

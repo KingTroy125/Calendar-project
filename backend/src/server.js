@@ -97,7 +97,9 @@ async function startServer() {
 
 // Vercel imports this module and invokes the exported app; it must not open a
 // listener. Local development and `npm start` still get a normal server.
-if (!process.env.VERCEL) {
+// Vercel always sets VERCEL="1"; backend/.env may also contain a VERCEL URL for
+// reference, so check the exact runtime value rather than mere presence.
+if (process.env.VERCEL !== "1") {
 	startServer();
 }
 
