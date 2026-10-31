@@ -174,7 +174,7 @@ export function DashboardHome({ user, calendarOnly = false }: { user: CurrentUse
               {formatDate(selectedDate, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
             <h1 className="mt-2 text-title-1-medium text-text-primary">
-              Good to see you, {greetingName} 👋
+              Good to see you, {greetingName}
             </h1>
             <p className="mt-1 text-body-regular text-text-secondary">
               Here&apos;s what&apos;s happening with your schedule.
