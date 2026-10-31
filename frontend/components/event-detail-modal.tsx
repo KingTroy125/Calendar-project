@@ -10,9 +10,11 @@ import {
   Pencil,
   Tag,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/base/buttons/button'
 import { IconButton } from '@/components/base/buttons/icon-button'
+import { Spinner } from '@/components/base/spinner/spinner'
 import { BackendError, type CalendarEvent, type CalendarEventColor } from '@/lib/api'
 import { cx } from '@/utils/cx'
 
@@ -251,16 +253,24 @@ export function EventDetailModal({
             {/* Footer */}
             <div className="flex flex-col gap-3 border-t border-separator-border pt-4">
               {deleteError && (
-                <p role="alert" className="text-body-2-regular text-text-error-primary">
+                <p role="alert" className="flex items-center gap-2 text-body-2-regular text-text-error-primary">
+                  <AlertTriangle className="size-4 shrink-0" aria-hidden />
                   {deleteError}
                 </p>
               )}
 
               {confirmingDelete ? (
-                <>
-                  <p className="text-body-2-regular text-text-secondary">
-                    Delete “{event.title}”? This can’t be undone.
-                  </p>
+                // ── Delete confirmation ──
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-start gap-3 rounded-2xl bg-status-rose-background px-4 py-3">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-status-rose-text" aria-hidden />
+                    <div>
+                      <p className="text-body-medium text-status-rose-text">Delete this event?</p>
+                      <p className="mt-0.5 text-caption-1-regular text-text-secondary">
+                        &ldquo;{event.title}&rdquo; will be permanently removed. This can&apos;t be undone.
+                      </p>
+                    </div>
+                  </div>
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="secondary"
@@ -271,20 +281,25 @@ export function EventDetailModal({
                     </Button>
                     <Button
                       variant="danger"
-                      leadingIcon={Trash2}
+                      leadingIcon={deleting ? undefined : Trash2}
                       onClick={handleDelete}
                       disabled={deleting}
                     >
-                      {deleting ? 'Deleting...' : 'Delete event'}
+                      {deleting ? (
+                        <span className="flex items-center gap-2">
+                          <Spinner size="sm" /> Deleting…
+                        </span>
+                      ) : (
+                        'Delete event'
+                      )}
                     </Button>
                   </div>
-                </>
+                </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Button
-                    variant="ghost"
+                    variant="danger"
                     leadingIcon={Trash2}
-                    className="text-text-error-primary"
                     onClick={() => setConfirmingDelete(true)}
                     disabled={!onDelete}
                   >
