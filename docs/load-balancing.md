@@ -77,7 +77,10 @@ The API is deliberately **stateless**:
   instance B.
 - Every event query is scoped by `req.userId` (`where: { userId: req.userId }`),
   so correctness does not depend on which instance receives the request.
-- The server keeps no local files, uploads, or per-user caches between requests.
+- The server keeps no local files or uploads. Its only in-process state is a
+  short-lived, per-user event-window cache; because it is keyed by `userId` and
+  bounded by a TTL, a request may use a different instance and still be correct
+  (see [Caching](caching.md)).
 - `GET /health` reads no database state and returns `{ "ok": true }`.
 
 This is what makes horizontal scaling safe. There is no need for sticky
@@ -209,6 +212,11 @@ idempotent, so a network-level retry can create a second event.
 > [Local Load Balancer](load-balancer.md) (`npm run cluster`). It demonstrates
 > round-robin, health checks, and failover across local Express instances; it is
 > not part of the Vercel deployment.
+>
+> The event cache is per instance. With several instances, a write invalidates
+> the cache only on the instance that handled it, so other instances can serve a
+> window up to `EVENTS_CACHE_TTL_MS` old. See
+> [Caching — shared caches](caching.md#shared-caches-and-multiple-instances).
 
 ### Phase 1 — harden before scaling
 
@@ -323,4 +331,7 @@ users.
   app.
 - [Deployment architecture](15_Deployment%20Architecture%203e81e9fd72968021a029db1878eeca91.md)
 - [Scalability strategy](10_Scalability%20Strategy%203dd1e9fd72968050b1ddd2f4e5df57a6.md)
-- [Caching](08_Caching%203dd1e9fd72968031bd66d7190fed4dcb.md)
+- [Caching](caching.md) — the implemented event-window cache, invalidation, and
+  per-instance coherence.
+- [Caching design note](08_Caching%203dd1e9fd72968031bd66d7190fed4dcb.md) — the
+  original system-design exercise.

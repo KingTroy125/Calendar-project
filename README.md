@@ -57,6 +57,8 @@ More detail:
 
 - [Load balancing and scaling](docs/load-balancing.md) — how traffic is
   distributed today, why the API is stateless, and the database pool strategy.
+- [Caching](docs/caching.md) — the event-window cache, invalidation, HTTP cache
+  headers, and how coherence changes with multiple instances.
 - [Authentication API](docs/README.md) — endpoint contract, cookie design, and
   hardening notes.
 
@@ -86,7 +88,7 @@ Calendar-project/
 │   │   ├── schema.prisma         # User, Account, Event models
 │   │   └── migrations/
 │   ├── src/
-│   │   ├── lib/                  # Prisma client, session helpers
+│   │   ├── lib/                  # Prisma client, session helpers, TTL cache
 │   │   ├── middleware/           # requireAuth
 │   │   ├── routes/               # auth.js, events.js
 │   │   ├── loadbalancer.js       # optional local round-robin proxy
@@ -141,6 +143,8 @@ Create `backend/.env`:
 | `JWT_SECRET` | Yes | Long random string used to sign session JWTs. |
 | `FRONTEND_URL` | Yes | Exact frontend origin for credentialed CORS, e.g. `http://localhost:3000`. |
 | `PORT` | No | API port, default `3001`. |
+| `EVENTS_CACHE_TTL_MS` | No | Event-window cache TTL in ms, default `5000`. Set `0` to disable caching. |
+| `EVENTS_CACHE_MAX_ENTRIES` | No | Cached windows per API instance, default `500`. |
 | `CROSS_SITE_COOKIES` | No | Set to `true` only when the browser calls the API cross-site directly. |
 
 Apply migrations and start the API:
@@ -312,12 +316,13 @@ For capacity planning, regions, connection pooling, and failure modes, see
 | --- | --- |
 | [docs/load-balancing.md](docs/load-balancing.md) | Project-specific traffic distribution, stateless API, database pooling, scaling phases, load testing. |
 | [docs/load-balancer.md](docs/load-balancer.md) | Optional local load balancer: quick start, configuration, failover, limitations. |
+| [docs/caching.md](docs/caching.md) | Event-window cache, keys and TTL, invalidation, HTTP headers, multi-instance coherence, verification. |
 | [docs/README.md](docs/README.md) | Authentication API contract, cookie/session design, production hardening checklist. |
 | [System design index](docs/Calendar%203d71e9fd7296801c921ffbbd18046765.md) | Entry point to the numbered system-design documents. |
 | [System architecture](docs/03_System_Architecture.md) | Layers, connections, and data flow. |
 | [API design](docs/06_API%20Design%203dd1e9fd7296801dab0cd79a8e67f607.md) | Endpoint design notes. |
 | [Database design](docs/07_Database%20Design%203dd1e9fd729680f4a1ebe46a0cf6d012.md) | Schema and data considerations. |
-| [Caching](docs/08_Caching%203dd1e9fd72968031bd66d7190fed4dcb.md) | Caching candidates and invalidation. |
+| [Caching](docs/08_Caching%203dd1e9fd72968031bd66d7190fed4dcb.md) | Original caching design notes and MVP decision. |
 | [Scalability strategy](docs/10_Scalability%20Strategy%203dd1e9fd72968050b1ddd2f4e5df57a6.md) | Phased scaling approach. |
 | [Security architecture](docs/12_Security%20Architecture%203e81e9fd729680a29628f7c461243308.md) | Security model and controls. |
 | [Testing strategy](docs/16_Testing%20Strategy%203e81e9fd729680b2acffd40875c4c9f3.md) | Test layers and coverage goals. |
@@ -345,6 +350,15 @@ The delete-event flow has been verified end to end:
 - another user receives `404`; a repeat delete returns `404`;
 - unauthenticated delete returns `401`;
 - both UI entry points remove the event and refresh dashboard counts.
+
+The event cache has been verified:
+
+- first range read returns `X-Cache: MISS`, the immediate repeat returns `HIT`;
+- create, update, and delete each invalidate that user's windows, so the next
+  read is `MISS` and reflects the write;
+- a second user reading the same range gets their own `MISS` and never the first
+  user's data;
+- `EVENTS_CACHE_TTL_MS=0` disables storage, so every read is a `MISS`.
 
 ---
 

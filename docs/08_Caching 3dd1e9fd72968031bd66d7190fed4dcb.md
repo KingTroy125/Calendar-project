@@ -1,5 +1,9 @@
 # 08_Caching
 
+> For what the Calendar app actually implements, see the project-specific
+> [Caching](caching.md) document. This file remains the original system-design
+> exercise.
+
 > Caching stores frequently accessed data temporarily so it can be retrieved faster without repeatedly accessing the primary database or another slower source.
 > 
 

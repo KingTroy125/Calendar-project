@@ -1,11 +1,27 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { TtlCache } from "../lib/cache.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 const colors = ["blue", "green", "pink", "purple", "amber"];
 const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+function readNonNegativeInt(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+// Event windows are short-lived and per-user. A write drops every cached window
+// for that user on this instance; other instances converge on TTL expiry.
+// Set EVENTS_CACHE_TTL_MS=0 to disable the cache entirely.
+const eventsCache = new TtlCache({
+  ttlMs: readNonNegativeInt(process.env.EVENTS_CACHE_TTL_MS, 5_000),
+  maxEntries: readNonNegativeInt(process.env.EVENTS_CACHE_MAX_ENTRIES, 500),
+});
+
+const userCachePrefix = (userId) => `events:${userId}:`;
 
 // Utility function to check if a string is a valid calendar date in the format YYYY-MM-DD
 function isCalendarDate(value) {
@@ -53,6 +69,15 @@ router.get("/", async (req, res) => {
   const { from, to } = range.data;
   if (from > to) return res.status(400).json({ error: "From date must be before to date" });
 
+  const cacheKey = `${userCachePrefix(req.userId)}${from}:${to}`;
+  const cached = eventsCache.get(cacheKey);
+
+  // The payload is authenticated and user-scoped, so browsers and shared
+  // proxies must not reuse it; only this per-instance cache may.
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Cache", cached === undefined ? "MISS" : "HIT");
+  if (cached !== undefined) return res.json(cached);
+
   try {
     const events = await prisma.event.findMany({
       where: {
@@ -64,7 +89,9 @@ router.get("/", async (req, res) => {
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
-    res.json(events.map(toEventResponse));
+    const payload = events.map(toEventResponse);
+    eventsCache.set(cacheKey, payload);
+    res.json(payload);
   } catch (error) {
     console.error("Failed to load events:", error);
     res.status(500).json({ error: "Unable to load events" });
@@ -89,6 +116,7 @@ router.post("/", async (req, res) => {
         userId: req.userId,
       },
     });
+    eventsCache.invalidatePrefix(userCachePrefix(req.userId));
     res.status(201).json(toEventResponse(event));
   } catch (error) {
     console.error("Failed to create event:", error);
@@ -119,6 +147,7 @@ router.put("/:id", async (req, res) => {
         endTime: input.allDay ? null : input.endTime,
       },
     });
+    eventsCache.invalidatePrefix(userCachePrefix(req.userId));
     res.json(toEventResponse(event));
   } catch (error) {
     console.error("Failed to update event:", error);
@@ -134,6 +163,7 @@ router.delete("/:id", async (req, res) => {
     if (!existing) return res.status(404).json({ error: "Event not found" });
 
     await prisma.event.delete({ where: { id: existing.id } });
+    eventsCache.invalidatePrefix(userCachePrefix(req.userId));
     res.sendStatus(204);
   } catch (error) {
     console.error("Failed to delete event:", error);

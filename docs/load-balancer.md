@@ -258,4 +258,6 @@ for either because it is stateless.
 
 - [Load balancing architecture](load-balancing.md) — production traffic
   distribution, scaling phases, and database pooling.
+- [Caching](caching.md) — the per-instance event cache, TTLs, and what changes
+  when several instances run behind this balancer.
 - [Authentication API](README.md) — cookies and endpoint contract.
