@@ -89,7 +89,9 @@ Calendar-project/
 │   │   ├── lib/                  # Prisma client, session helpers
 │   │   ├── middleware/           # requireAuth
 │   │   ├── routes/               # auth.js, events.js
+│   │   ├── loadbalancer.js       # optional local round-robin proxy
 │   │   └── server.js             # Express app + local listener
+│   ├── scripts/start-cluster.mjs # spawns N API instances + balancer
 │   └── vercel.json               # Prisma engine bundling
 ├── frontend/
 │   ├── app/
@@ -181,6 +183,23 @@ is available at `/dashboard`.
 > **Local note:** `BACKEND_URL` must be set for the `/api` proxy to work. Without
 > it, API calls return `500 {"error":"BACKEND_URL not configured"}`.
 
+### 4. Optional: run with a load balancer
+
+To run several API instances behind a small round-robin balancer:
+
+```bash
+cd backend
+npm run cluster        # 3 APIs on 3001–3003 + balancer on 8080
+```
+
+Then set `BACKEND_URL="http://localhost:8080"` in `frontend/.env` and restart
+the frontend. The balancer checks each instance's `/health`, skips unhealthy
+ones, and exposes status at `/__lb/upstreams`.
+
+See [docs/load-balancer.md](docs/load-balancer.md) for configuration, failover
+testing, and limitations. This is optional: Vercel already load-balances the
+deployed app.
+
 ---
 
 ## Scripts
@@ -191,6 +210,8 @@ is available at `/dashboard`.
 | --- | --- |
 | `npm run dev` | Starts Express with `node --watch` on `PORT` (default `3001`). |
 | `npm start` | Starts Express without watch mode. |
+| `npm run lb` | Starts the optional local load balancer on `8080`. |
+| `npm run cluster` | Spawns 3 API instances and the balancer together. |
 | `npm run postinstall` | Runs `prisma generate` (also runs on install). |
 | `npm run db:deploy` | Applies pending Prisma migrations. |
 | `npm run studio` | Opens Prisma Studio. |
@@ -290,6 +311,7 @@ For capacity planning, regions, connection pooling, and failure modes, see
 | Document | Contents |
 | --- | --- |
 | [docs/load-balancing.md](docs/load-balancing.md) | Project-specific traffic distribution, stateless API, database pooling, scaling phases, load testing. |
+| [docs/load-balancer.md](docs/load-balancer.md) | Optional local load balancer: quick start, configuration, failover, limitations. |
 | [docs/README.md](docs/README.md) | Authentication API contract, cookie/session design, production hardening checklist. |
 | [System design index](docs/Calendar%203d71e9fd7296801c921ffbbd18046765.md) | Entry point to the numbered system-design documents. |
 | [System architecture](docs/03_System_Architecture.md) | Layers, connections, and data flow. |

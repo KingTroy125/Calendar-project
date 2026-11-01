@@ -205,6 +205,11 @@ idempotent, so a network-level retry can create a second event.
 - Stateless JWT sessions allow any instance to serve any request.
 - Nothing to load-balance manually.
 
+> For a runnable small-scale example, see
+> [Local Load Balancer](load-balancer.md) (`npm run cluster`). It demonstrates
+> round-robin, health checks, and failover across local Express instances; it is
+> not part of the Vercel deployment.
+
 ### Phase 1 — harden before scaling
 
 1. Add rate limiting for `POST /auth/login` and `POST /auth/signup`. Use a shared
@@ -310,6 +315,8 @@ users.
 
 ## Related documentation
 
+- [Local load balancer](load-balancer.md) — runnable round-robin implementation
+  for local or self-hosted instances.
 - [Authentication API](README.md) — cookie, JWT, and endpoint contract.
 - [Generic load-balancing design note](09_Load%20Balancing%203dd1e9fd729680ff8df4cebefd690499.md)
   — the original system-design exercise this document replaces for the shipped

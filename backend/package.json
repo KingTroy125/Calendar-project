@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "lb": "node src/loadbalancer.js",
+    "cluster": "node scripts/start-cluster.mjs",
     "studio": "prisma studio",
     "postinstall": "prisma generate",
     "db:deploy": "prisma migrate deploy"
