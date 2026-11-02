@@ -25,8 +25,9 @@ designed to run as two separate **Vercel** projects.
 - **Theme support** — light and dark mode using semantic design tokens.
 - **Responsive, accessible UI** — BoardUI source components, React Aria
   primitives, keyboard-friendly dialogs and focus states.
-- **Public landing page** — animated hero with **Sign up** (`/signup`) and
-  **Log in** (`/login`) calls to action.
+- **Public landing page** — scroll-aware header and a centered hero with a
+  framed product screenshot, **Sign up** (`/signup`) and **Log in** (`/login`)
+  calls to action, and a short capability strip.
 
 ---
 
@@ -105,7 +106,7 @@ Calendar-project/
 │   │   ├── application/          # dashboard, settings, auth, theme
 │   │   ├── base/                 # buttons, inputs, badges, ...
 │   │   ├── foundations/          # direction provider
-│   │   └── landing/              # animated hero
+│   │   └── landing/              # hero section and landing header
 │   └── lib/api.ts                # typed API client
 └── docs/                         # API, design, deployment, and scaling docs
 ```
@@ -186,6 +187,10 @@ is available at `/dashboard`.
 
 > **Local note:** `BACKEND_URL` must be set for the `/api` proxy to work. Without
 > it, API calls return `500 {"error":"BACKEND_URL not configured"}`.
+>
+> **Landing screenshot:** add the product screenshot at
+> `frontend/public/hero-app.png` (roughly 1600×1000). Until that file exists the
+> hero frame shows a quiet placeholder instead of a broken image.
 
 ### 4. Optional: run with a load balancer
 
