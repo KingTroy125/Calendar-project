@@ -129,14 +129,14 @@ export function LandingHero() {
           <motion.h1
             aria-label="A calmer calendar for everything you have planned."
             variants={headingVariants}
-            className="max-w-4xl text-display-4-semibold text-text-primary sm:text-display-3-medium lg:text-display-2-medium"
+            className="max-w-4xl text-display-4-regular text-text-primary sm:text-display-3-regular lg:text-display-2-regular"
           >
             <AnimatedText text="A calmer calendar for everything you have planned." />
           </motion.h1>
 
           <motion.p
             variants={descriptionVariants}
-            className="mt-5 max-w-2xl text-body-regular text-text-secondary sm:text-body-medium"
+            className="mt-5 max-w-2xl text-body-regular text-text-secondary"
           >
             Keep your days, weeks, and events in one focused place. Sign up to save
             events, shape your week, and make the calendar yours.
@@ -190,12 +190,12 @@ export function LandingHero() {
 
           {/* Trust strip */}
           <motion.div id="features" variants={trustVariants} className="mt-10 scroll-mt-24 sm:mt-12">
-            <p className="text-caption-1-semibold uppercase tracking-[0.18em] text-text-tertiary">
+            <p className="text-caption-1-regular uppercase tracking-[0.18em] text-text-tertiary">
               Built for the way you plan
             </p>
             <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
               {trustItems.map(({ icon: Icon, label }) => (
-                <li key={label} className="flex items-center gap-2 text-caption-1-medium text-text-secondary">
+                <li key={label} className="flex items-center gap-2 text-caption-1-regular text-text-secondary">
                   <Icon aria-hidden className="size-4 text-foreground-icon-tertiary" />
                   {label}
                 </li>

@@ -44,7 +44,7 @@ export function LandingHeader() {
               >
                 <Calendar className="size-5" />
               </span>
-              <span className="text-body-medium font-semibold text-text-primary">Calendar</span>
+              <span className="text-body-regular text-text-primary">Calendar</span>
             </Link>
           </motion.div>
 
@@ -59,7 +59,7 @@ export function LandingHeader() {
               >
                 <Link
                   href={item.href}
-                  className="rounded-lg px-2 py-1 text-body-medium text-text-secondary outline-none transition-colors hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
+                  className="rounded-lg px-2 py-1 text-body-regular text-text-secondary outline-none transition-colors hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
                 >
                   <motion.span whileHover={{ y: -2 }} className="inline-block">
                     {item.label}
@@ -141,7 +141,7 @@ export function LandingHeader() {
                   >
                     <Link
                       href={item.href}
-                      className="block rounded-xl px-3 py-2 text-body-medium text-text-secondary outline-none transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
+                      className="block rounded-xl px-3 py-2 text-body-regular text-text-secondary outline-none transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
                       onClick={() => setMenuOpen(false)}
                     >
                       {item.label}
