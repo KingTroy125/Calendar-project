@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 const BACKEND_URL = process.env.BACKEND_URL?.replace(/\/+$/, "");
 
@@ -77,7 +76,7 @@ async function proxy(
     console.log(`[API Proxy] Response: ${res.status} for ${pathString}`);
     
     // Handle Set-Cookie headers
-    const setCookieHeaders = (res.headers as any).getSetCookie?.();
+    const setCookieHeaders = (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.();
     if (Array.isArray(setCookieHeaders) && setCookieHeaders.length > 0) {
       console.log(`[API Proxy] Forwarding ${setCookieHeaders.length} Set-Cookie headers`);
       for (const cookie of setCookieHeaders) {
@@ -86,7 +85,7 @@ async function proxy(
         const [nameValue] = cookieParts;
         const [name, value] = nameValue.split('=');
         
-        const cookieOptions: any = { path: '/' };
+        const cookieOptions: Record<string, string | number | boolean> = { path: '/' };
         for (let i = 1; i < cookieParts.length; i++) {
           const part = cookieParts[i].trim();
           if (part.toLowerCase().startsWith('httponly')) cookieOptions.httpOnly = true;
@@ -104,7 +103,7 @@ async function proxy(
         
         try {
           nextRes.cookies.set(name.trim(), value.trim(), cookieOptions);
-        } catch (e) {
+        } catch {
           // Fallback to header
           nextRes.headers.append("Set-Cookie", cookie);
         }
