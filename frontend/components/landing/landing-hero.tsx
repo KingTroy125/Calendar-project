@@ -109,7 +109,7 @@ function AnimatedText({ text }: { text: string }) {
   );
 }
 
-export function LandingHero({ hasScreenshot }: { hasScreenshot?: boolean }) {
+export function LandingHero() {
   return (
     <section className="relative overflow-hidden pb-16 pt-28 sm:pb-24 sm:pt-36">
       {/* Soft accent glows behind the hero */}
