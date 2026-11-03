@@ -11,6 +11,23 @@ import { prisma } from "./lib/prisma.js";
 // normal listener.
 const app = express();
 
+// Rate limiting keys on the client address. Only trust X-Forwarded-For when
+// the API really sits behind a proxy; otherwise a client could spoof the header
+// and dodge the limit. On Vercel the platform sits in front of the Function, so
+// one hop is trusted by default. Override with TRUST_PROXY=<hops|true|false>.
+function resolveTrustProxy() {
+  const raw = process.env.TRUST_PROXY;
+  if (raw === "true") return 1;
+  if (raw === "false") return false;
+
+  const hops = Number(raw);
+  if (raw && Number.isInteger(hops) && hops >= 0) return hops;
+
+  return process.env.VERCEL === "1" ? 1 : false;
+}
+
+app.set("trust proxy", resolveTrustProxy());
+
 // Handle preflight requests
 app.use((req, res, next) => {
   const origin = req.headers.origin;

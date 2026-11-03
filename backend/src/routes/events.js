@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { TtlCache } from "../lib/cache.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { eventsLimiter } from "../middleware/rate-limit.js";
 
 const router = Router();
 const colors = ["blue", "green", "pink", "purple", "amber"];
@@ -61,6 +62,7 @@ function toEventResponse(event) {
 }
 
 router.use(requireAuth);
+router.use(eventsLimiter);
 
 router.get("/", async (req, res) => {
   const range = z.object({ from: calendarDate, to: calendarDate }).safeParse(req.query);

@@ -23,6 +23,8 @@ designed to run as two separate **Vercel** projects.
 - **Preferences that apply** — week start and default duration drive the week
   strip, month grid, and new-event form.
 - **Theme support** — light and dark mode using semantic design tokens.
+- **Abuse protection** — login, signup, and event endpoints are rate limited,
+  returning `429` with standard rate-limit headers.
 - **Responsive, accessible UI** — BoardUI source components, React Aria
   primitives, keyboard-friendly dialogs and focus states.
 - **Public landing page** — scroll-aware header and a centered hero with a
@@ -60,6 +62,8 @@ More detail:
   distributed today, why the API is stateless, and the database pool strategy.
 - [Caching](docs/caching.md) — the event-window cache, invalidation, HTTP cache
   headers, and how coherence changes with multiple instances.
+- [Rate limiting](docs/rate-limiting.md) — limits, keys, proxy configuration,
+  and behaviour with multiple API instances.
 - [Authentication API](docs/README.md) — endpoint contract, cookie design, and
   hardening notes.
 
@@ -90,11 +94,12 @@ Calendar-project/
 │   │   └── migrations/
 │   ├── src/
 │   │   ├── lib/                  # Prisma client, session helpers, TTL cache
-│   │   ├── middleware/           # requireAuth
+│   │   ├── middleware/           # requireAuth, rate limiting
 │   │   ├── routes/               # auth.js, events.js
 │   │   ├── loadbalancer.js       # optional local round-robin proxy
 │   │   └── server.js             # Express app + local listener
 │   ├── scripts/start-cluster.mjs # spawns N API instances + balancer
+│   ├── test/                     # node:test suites
 │   └── vercel.json               # Prisma engine bundling
 ├── frontend/
 │   ├── app/
@@ -147,6 +152,14 @@ Create `backend/.env`:
 | `EVENTS_CACHE_TTL_MS` | No | Event-window cache TTL in ms, default `5000`. Set `0` to disable caching. |
 | `EVENTS_CACHE_MAX_ENTRIES` | No | Cached windows per API instance, default `500`. |
 | `CROSS_SITE_COOKIES` | No | Set to `true` only when the browser calls the API cross-site directly. |
+| `RATE_LIMIT_DISABLED` | No | Set to `true` to bypass all rate limits (local experiments). |
+| `AUTH_LOGIN_LIMIT` | No | Login attempts per IP + email, default `5`. |
+| `AUTH_LOGIN_WINDOW_MS` | No | Login window, default `900000` (15 minutes). |
+| `AUTH_SIGNUP_LIMIT` | No | Signup attempts per IP, default `5`. |
+| `AUTH_SIGNUP_WINDOW_MS` | No | Signup window, default `3600000` (1 hour). |
+| `EVENTS_RATE_LIMIT` | No | Event requests per user, default `300`. |
+| `EVENTS_RATE_LIMIT_WINDOW_MS` | No | Event window, default `60000` (1 minute). |
+| `TRUST_PROXY` | No | Trusted proxy hops for client IPs; `1` on Vercel, `false` locally. |
 
 Apply migrations and start the API:
 
@@ -221,6 +234,7 @@ deployed app.
 | `npm start` | Starts Express without watch mode. |
 | `npm run lb` | Starts the optional local load balancer on `8080`. |
 | `npm run cluster` | Spawns 3 API instances and the balancer together. |
+| `npm test` | Runs the `node:test` suites (rate limiting). |
 | `npm run postinstall` | Runs `prisma generate` (also runs on install). |
 | `npm run db:deploy` | Applies pending Prisma migrations. |
 | `npm run studio` | Opens Prisma Studio. |
@@ -322,6 +336,7 @@ For capacity planning, regions, connection pooling, and failure modes, see
 | [docs/load-balancing.md](docs/load-balancing.md) | Project-specific traffic distribution, stateless API, database pooling, scaling phases, load testing. |
 | [docs/load-balancer.md](docs/load-balancer.md) | Optional local load balancer: quick start, configuration, failover, limitations. |
 | [docs/caching.md](docs/caching.md) | Event-window cache, keys and TTL, invalidation, HTTP headers, multi-instance coherence, verification. |
+| [docs/rate-limiting.md](docs/rate-limiting.md) | Limits and keys, `429` behaviour, environment overrides, proxy/trust settings, multi-instance caveats, tests. |
 | [docs/README.md](docs/README.md) | Authentication API contract, cookie/session design, production hardening checklist. |
 | [System design index](docs/Calendar%203d71e9fd7296801c921ffbbd18046765.md) | Entry point to the numbered system-design documents. |
 | [System architecture](docs/03_System_Architecture.md) | Layers, connections, and data flow. |
@@ -347,6 +362,7 @@ npm run build
 # Backend syntax check
 cd ../backend
 node --check src/server.js
+npm test
 ```
 
 The delete-event flow has been verified end to end:
@@ -365,6 +381,14 @@ The event cache has been verified:
   user's data;
 - `EVENTS_CACHE_TTL_MS=0` disables storage, so every read is a `MISS`.
 
+Rate limiting has been verified with `npm test`:
+
+- requests pass until the configured limit, then return `429` with the JSON error
+  and `RateLimit` / `Retry-After` headers;
+- separate client addresses keep separate buckets;
+- `RATE_LIMIT_DISABLED=true` bypasses the limiters;
+- the real `/auth/login` route is wired to the login limiter.
+
 ---
 
 ## Troubleshooting
@@ -377,6 +401,7 @@ The event cache has been verified:
 | Prisma engine error on Vercel | Missing engine binary for the runtime | `backend/prisma/schema.prisma` includes `rhel-openssl-3.0.x`; keep it in `binaryTargets`. |
 | Migrations fail through the pooler | DDL needs a direct connection | Run `npm run db:deploy` with `DIRECT_URL` pointing at the direct host. |
 | Slow first API request after idle | Serverless cold start | Expected; keep the bundle lean and co-locate regions. |
+| Repeated `429 Too Many Requests` | A rate limit was reached, or the proxy chain hides the real client IP | Wait for `Retry-After`; behind a proxy set `TRUST_PROXY`; locally set `RATE_LIMIT_DISABLED=true` while testing. |
 
 ---
 

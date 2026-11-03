@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { issueSession, clearSession } from "../lib/session.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { loginLimiter, signupLimiter } from "../middleware/rate-limit.js";
 
 const router = Router();
 
@@ -64,7 +65,7 @@ function normalizeText(value) {
 // This route handles user signup by validating the provided email and password against the defined schema.
 // It checks if the email is already in use and, if not, creates a new user in the database with a hashed password.
 // Upon successful signup, it issues a session token and responds with the user's public profile.
-router.post("/signup", async (req, res) => {
+router.post("/signup", signupLimiter, async (req, res) => {
   const parsed = creds.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid email or password" });
   const { email, password } = parsed.data;
@@ -84,7 +85,7 @@ router.post("/signup", async (req, res) => {
 // It checks if the user exists in the database and verifies the password using bcrypt.
 // If the credentials are valid, it issues a session token and responds with the user's public profile.
 // If the credentials are invalid, it responds with a 401 status indicating unauthorized access.
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   const parsed = creds.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid credentials" });
 
