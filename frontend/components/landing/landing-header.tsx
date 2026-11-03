@@ -1,153 +1,179 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowRight, Calendar, Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Calendar, Menu, X } from "lucide-react";
 import { ButtonLink } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 
-/**
- * Signed-out header for the landing page.
- *
- * Mirrors the reference behaviour: transparent at the top, a soft blurred
- * surface once the page scrolls, a compact mobile panel, and a single
- * "Get started" action while scrolled. Colours and type come from BoardUI
- * tokens so light and dark mode both follow the rest of the app.
- */
-
-const menuItems = [
-  { name: "Preview", href: "#preview" },
-  { name: "Features", href: "#features" },
+const navItems = [
+  { label: "Home", href: "/" },
+  { label: "Features", href: "#features" },
+  { label: "Integration", href: "#integration" },
+  { label: "Pricing", href: "#pricing" },
 ];
 
 export function LandingHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 12);
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      <nav
-        className={cx(
-          "border-b transition-colors duration-300",
-          isScrolled
-            ? "border-separator-border bg-background-full/80 backdrop-blur"
-            : "border-transparent bg-transparent",
-        )}
+      <motion.nav
+        aria-label="Main navigation"
+        className="mx-auto max-w-7xl px-3 pt-3 sm:px-4 sm:pt-4 md:px-6 md:pt-6 lg:px-8"
+        initial={{ y: -80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between rounded-2xl border border-border-button-default/80 bg-background-primary-default/85 px-4 py-2.5 shadow-lg shadow-black/5 backdrop-blur-xl transition-colors sm:rounded-3xl sm:px-5 sm:py-3 dark:border-border-button-default/60 dark:bg-background-primary-default/75 dark:shadow-black/25">
+          {/* Logo */}
+          <motion.div
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          >
             <Link
               href="/"
               aria-label="Calendar home"
-              className="flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring"
+              className="flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring"
             >
               <span
                 aria-hidden
-                className="flex size-8 items-center justify-center rounded-full bg-accent-50 text-accent-700"
+                className="flex size-9 items-center justify-center rounded-2xl bg-accent-50 text-accent-700 dark:bg-accent-950/60 dark:text-accent-400"
               >
-                <Calendar className="size-[18px]" />
+                <Calendar className="size-5" />
               </span>
-              <span className="text-body-medium text-text-primary">Calendar</span>
+              <span className="text-body-medium font-semibold text-text-primary">Calendar</span>
             </Link>
+          </motion.div>
 
-            <div className="ms-4 hidden items-center gap-1 lg:flex">
-              {menuItems.map((item) => (
+          {/* Desktop Navigation */}
+          <div className="hidden items-center gap-6 md:flex lg:gap-8">
+            {navItems.map((item, index) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: -16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 + index * 0.08, duration: 0.4 }}
+              >
                 <Link
-                  key={item.name}
                   href={item.href}
-                  className="rounded-lg px-3 py-2 text-body-medium text-text-secondary outline-none transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
+                  className="rounded-lg px-2 py-1 text-body-medium text-text-secondary outline-none transition-colors hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
                 >
-                  {item.name}
+                  <motion.span whileHover={{ y: -2 }} className="inline-block">
+                    {item.label}
+                  </motion.span>
                 </Link>
-              ))}
-            </div>
+              </motion.div>
+            ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 sm:flex">
-              {isScrolled ? (
-                <ButtonLink href="/signup" size="small" trailingIcon={ArrowRight}>
+          {/* Desktop CTA */}
+          <div className="hidden items-center gap-2 md:flex">
+            <ButtonLink
+              href="/login"
+              variant="ghost"
+              size="small"
+              className="rounded-full px-3 text-body-medium text-text-secondary hover:text-text-primary"
+            >
+              Log in
+            </ButtonLink>
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            >
+              <ButtonLink
+                href="/signup"
+                size="small"
+                className="rounded-full px-5 text-body-medium font-medium shadow-xs"
+              >
+                Get started
+              </ButtonLink>
+            </motion.div>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="landing-mobile-menu"
+            className="relative z-20 flex size-9 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring md:hidden"
+          >
+            <Menu
+              className={cx(
+                "size-5 transition-all duration-200",
+                menuOpen && "rotate-180 scale-0 opacity-0",
+              )}
+            />
+            <X
+              className={cx(
+                "absolute inset-0 m-auto size-5 transition-all duration-200",
+                menuOpen
+                  ? "rotate-0 scale-100 opacity-100"
+                  : "-rotate-180 scale-0 opacity-0",
+              )}
+            />
+          </button>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              id="landing-mobile-menu"
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="mt-2.5 rounded-2xl border border-border-button-default/80 bg-background-primary-default/95 p-4 shadow-xl shadow-black/5 backdrop-blur-xl sm:rounded-3xl dark:bg-background-primary-default/90 dark:shadow-black/25 md:hidden"
+            >
+              <ul className="space-y-1">
+                {navItems.map((item, index) => (
+                  <motion.li
+                    key={item.label}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.2 }}
+                  >
+                    <Link
+                      href={item.href}
+                      className="block rounded-xl px-3 py-2 text-body-medium text-text-secondary outline-none transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  </motion.li>
+                ))}
+              </ul>
+              <div className="mt-4 flex flex-col gap-2 border-t border-separator-border pt-4">
+                <ButtonLink
+                  href="/login"
+                  variant="secondary"
+                  size="medium"
+                  className="w-full justify-center rounded-full"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Log in
+                </ButtonLink>
+                <ButtonLink
+                  href="/signup"
+                  size="medium"
+                  className="w-full justify-center rounded-full"
+                  onClick={() => setMenuOpen(false)}
+                >
                   Get started
                 </ButtonLink>
-              ) : (
-                <>
-                  <ButtonLink href="/login" variant="ghost" size="small">
-                    Log in
-                  </ButtonLink>
-                  <ButtonLink href="/signup" size="small">
-                    Sign up
-                  </ButtonLink>
-                </>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={menuOpen}
-              aria-controls="landing-mobile-menu"
-              className="relative -me-1 inline-flex size-9 items-center justify-center rounded-lg text-text-secondary outline-none transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring lg:hidden"
-            >
-              <Menu
-                aria-hidden
-                className={cx(
-                  "size-5 transition-all duration-200",
-                  menuOpen && "rotate-90 scale-0 opacity-0",
-                )}
-              />
-              <X
-                aria-hidden
-                className={cx(
-                  "absolute size-5 transition-all duration-200",
-                  menuOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0",
-                )}
-              />
-            </button>
-          </div>
-        </div>
-
-        <div
-          id="landing-mobile-menu"
-          className={cx(
-            "border-t border-separator-border bg-background-full/95 backdrop-blur lg:hidden",
-            menuOpen ? "block" : "hidden",
+              </div>
+            </motion.div>
           )}
-        >
-          <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6">
-            <ul className="space-y-1">
-              {menuItems.map((item) => (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setMenuOpen(false)}
-                    className="block rounded-lg px-3 py-2 text-body-medium text-text-secondary outline-none hover:bg-background-secondary-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring"
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-3 grid gap-2 sm:hidden">
-              <ButtonLink href="/login" variant="secondary" className="w-full">
-                Log in
-              </ButtonLink>
-              <ButtonLink href="/signup" className="w-full">
-                Sign up
-              </ButtonLink>
-            </div>
-          </div>
-        </div>
-      </nav>
+        </AnimatePresence>
+      </motion.nav>
     </header>
   );
 }
+
+export default LandingHeader;
