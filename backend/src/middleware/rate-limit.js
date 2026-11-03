@@ -3,11 +3,12 @@ import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 /**
  * Rate limiting for the public API.
  *
- * Three limits are exposed:
+ * Four limits are exposed:
  *
- *   - login:  per client IP + email, 5 attempts / 15 minutes
- *   - signup: per client IP,         5 attempts / hour
- *   - events: per signed-in user,    300 requests / minute
+ *   - login:   per client IP + email, 5 attempts / 15 minutes
+ *   - signup:  per client IP,         5 attempts / hour
+ *   - events:  per signed-in user,    300 requests / minute
+ *   - account: per signed-in user,    60 requests / minute
  *
  * Every value can be tuned from the environment (see `docs/rate-limiting.md`),
  * and `RATE_LIMIT_DISABLED=true` turns all of them off for local experiments.
@@ -65,9 +66,9 @@ function loginKey(req) {
   return `${clientKey(req)}:${email}`;
 }
 
-// Authenticated event requests are counted per user, not per address, so two
-// people behind the same network do not consume each other's quota.
-function eventsKey(req) {
+// Authenticated requests are counted per user, not per address, so two people
+// behind the same network do not consume each other's quota.
+function userOrIpKey(req) {
   return req.userId ? `user:${req.userId}` : clientKey(req);
 }
 
@@ -92,5 +93,13 @@ export const eventsLimiter = createRateLimiter({
   windowMs: readPositiveInt("EVENTS_RATE_LIMIT_WINDOW_MS", MINUTE),
   limit: readPositiveInt("EVENTS_RATE_LIMIT", 300),
   message: "Too many calendar requests. Please slow down and try again shortly.",
-  keyGenerator: eventsKey,
+  keyGenerator: userOrIpKey,
+});
+
+export const accountLimiter = createRateLimiter({
+  identifier: "auth-account",
+  windowMs: readPositiveInt("AUTH_ACCOUNT_WINDOW_MS", MINUTE),
+  limit: readPositiveInt("AUTH_ACCOUNT_LIMIT", 60),
+  message: "Too many account requests. Please slow down and try again shortly.",
+  keyGenerator: userOrIpKey,
 });

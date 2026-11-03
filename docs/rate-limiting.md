@@ -11,6 +11,7 @@ conservative for authentication and generous for normal calendar use.
 | `POST /auth/login` | client IP + email | 5 attempts | 15 minutes | `AUTH_LOGIN_LIMIT`, `AUTH_LOGIN_WINDOW_MS` |
 | `POST /auth/signup` | client IP | 5 attempts | 1 hour | `AUTH_SIGNUP_LIMIT`, `AUTH_SIGNUP_WINDOW_MS` |
 | `/events/*` | signed-in user | 300 requests | 1 minute | `EVENTS_RATE_LIMIT`, `EVENTS_RATE_LIMIT_WINDOW_MS` |
+| `GET/PATCH /auth/me`, `PATCH /auth/password` | signed-in user | 60 requests | 1 minute | `AUTH_ACCOUNT_LIMIT`, `AUTH_ACCOUNT_WINDOW_MS` |
 
 Why these keys:
 
@@ -20,9 +21,11 @@ Why these keys:
 - **Signup** has no account yet, so it is counted per client address.
 - **Events** runs after `requireAuth`, so it counts per user id. One person
   refreshing the calendar does not consume anyone else's quota.
+- **Account** endpoints use the same per-user key so a signed-in session cannot
+  hammer profile reads, profile saves, or password changes.
 
-`/health` and `/auth/me` are not rate limited; the first is used by the load
-balancer, and the second is already protected by the session check.
+`/health` and `POST /auth/logout` are not rate limited: the first is used by the
+load balancer and the second is a cheap cookie clear.
 
 ## Behaviour
 
@@ -51,6 +54,8 @@ When the limit is reached the API returns `429 Too Many Requests`, a
 | `AUTH_SIGNUP_WINDOW_MS` | `3600000` | Signup window in milliseconds (1 hour). |
 | `EVENTS_RATE_LIMIT` | `300` | Event requests per user and window. |
 | `EVENTS_RATE_LIMIT_WINDOW_MS` | `60000` | Events window in milliseconds (1 minute). |
+| `AUTH_ACCOUNT_LIMIT` | `60` | Account requests per user and window. |
+| `AUTH_ACCOUNT_WINDOW_MS` | `60000` | Account window in milliseconds (1 minute). |
 | `TRUST_PROXY` | `1` on Vercel, `false` elsewhere | Number of trusted proxy hops, or `true`/`false`. |
 
 ### Trust proxy

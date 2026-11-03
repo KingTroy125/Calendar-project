@@ -23,8 +23,8 @@ designed to run as two separate **Vercel** projects.
 - **Preferences that apply** — week start and default duration drive the week
   strip, month grid, and new-event form.
 - **Theme support** — light and dark mode using semantic design tokens.
-- **Abuse protection** — login, signup, and event endpoints are rate limited,
-  returning `429` with standard rate-limit headers.
+- **Abuse protection** — login, signup, account, and event endpoints are rate
+  limited, returning `429` with standard rate-limit headers.
 - **Responsive, accessible UI** — BoardUI source components, React Aria
   primitives, keyboard-friendly dialogs and focus states.
 - **Public landing page** — scroll-aware header and a centered hero with a
@@ -159,6 +159,8 @@ Create `backend/.env`:
 | `AUTH_SIGNUP_WINDOW_MS` | No | Signup window, default `3600000` (1 hour). |
 | `EVENTS_RATE_LIMIT` | No | Event requests per user, default `300`. |
 | `EVENTS_RATE_LIMIT_WINDOW_MS` | No | Event window, default `60000` (1 minute). |
+| `AUTH_ACCOUNT_LIMIT` | No | Account requests per user, default `60`. |
+| `AUTH_ACCOUNT_WINDOW_MS` | No | Account window, default `60000` (1 minute). |
 | `TRUST_PROXY` | No | Trusted proxy hops for client IPs; `1` on Vercel, `false` locally. |
 
 Apply migrations and start the API:

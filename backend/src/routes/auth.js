@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { issueSession, clearSession } from "../lib/session.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { loginLimiter, signupLimiter } from "../middleware/rate-limit.js";
+import { accountLimiter, loginLimiter, signupLimiter } from "../middleware/rate-limit.js";
 
 const router = Router();
 
@@ -99,7 +99,7 @@ router.post("/login", loginLimiter, async (req, res) => {
 
 // Get current user route
 // "am i still logged in and who am i" — returns the profile the settings screen renders.
-router.get("/me", requireAuth, async (req, res) => {
+router.get("/me", requireAuth, accountLimiter, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(401).json({ error: "Not authenticated" });
   res.json(publicUser(user));
@@ -107,7 +107,7 @@ router.get("/me", requireAuth, async (req, res) => {
 
 // Update the signed-in user's profile. Partial updates are supported so the
 // settings screen can save each field on its own.
-router.patch("/me", requireAuth, async (req, res) => {
+router.patch("/me", requireAuth, accountLimiter, async (req, res) => {
   const parsed = profileUpdate.safeParse(req.body ?? {});
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid profile" });
@@ -142,7 +142,7 @@ router.patch("/me", requireAuth, async (req, res) => {
 });
 
 // Change the password for the signed-in account.
-router.patch("/password", requireAuth, async (req, res) => {
+router.patch("/password", requireAuth, accountLimiter, async (req, res) => {
   const parsed = passwordChange.safeParse(req.body ?? {});
   if (!parsed.success) {
     return res.status(400).json({ error: "New password must be at least 8 characters." });
